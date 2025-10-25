@@ -2610,7 +2610,7 @@ const timelineData = [
         text: "🔥 Burn extended – an extra 24h more!!\n\nNew deadline: Tuesday Sep 23, 23:59 CET\n\n300+ Genesis NFTs already burned 🔥\n\nWill you burn yours or hold it?",
         eventSummary: "Burn Extended - 24 hour extension for Genesis burn",
         hasImage: false,
-        hasVideo: true,
+        hasVideo: false,
         hasQuote: true,
         quoteAuthor: "Billions",
         quoteHandle: "@billions_ntwk",
@@ -4142,3 +4142,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Clean up on page unload
 window.addEventListener('beforeunload', cleanupTimers);
+
