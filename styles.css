@@ -2269,3 +2269,170 @@ body {
         font-size: 0.65rem;
     }
 }
+
+/* Loading Placeholders and Progress Indicators */
+.media-loading-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.media-loading-placeholder.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(6, 182, 212, 0.3);
+    border-top: 3px solid #06b6d4;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-text {
+    color: #06b6d4;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Loading Progress Bar */
+.loading-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: rgba(6, 182, 212, 0.2);
+    border-radius: 0 0 1rem 1rem;
+    overflow: hidden;
+}
+
+.loading-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #06b6d4 0%, #a855f7 50%, #ec4899 100%);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 0 0 1rem 1rem;
+}
+
+/* Skeleton Loading Animation */
+.skeleton-loading {
+    background: linear-gradient(90deg, 
+        rgba(6, 182, 212, 0.1) 25%, 
+        rgba(6, 182, 212, 0.2) 50%, 
+        rgba(6, 182, 212, 0.1) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Image Loading States */
+.side-image-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.side-image-loading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    z-index: 1;
+    transition: opacity 0.3s ease;
+}
+
+.side-image-loading.loaded::before {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Video Loading States */
+.video-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: opacity 0.3s ease;
+}
+
+.video-loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.video-loading-icon {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(6, 182, 212, 0.3);
+    border-top: 4px solid #06b6d4;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+.video-loading-text {
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* Performance Optimizations */
+.will-change-transform {
+    will-change: transform;
+}
+
+.will-change-opacity {
+    will-change: opacity;
+}
+
+/* Hardware Acceleration for Smooth Animations */
+.tweet-card,
+.side-image-display,
+.media-overlay {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Optimized Transitions */
+.optimized-transition {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
