@@ -2749,8 +2749,8 @@ const timelineData = [
         verified: true,
         text: "Bots and sybils draining your airdrop? Not on our watch 🚫\n\nBillions' Secure Token Distribution makes sure only real humans get rewarded — protecting your treasury & building real community trust.\n\nDM @ravikantagrawal for a demo 💪",
         eventSummary: "Secure Token Distribution - Anti-bot solution",
-        hasImage: true,
-        hasVideo: false,
+        hasImage: false,
+        hasVideo: true,
         likes: "893",
         retweets: "209",
         replies: "264"
@@ -2979,8 +2979,8 @@ const timelineData = [
         verified: true,
         text: "Supermasks Mint is LIVE! 👥\n\nMint yours now 👇\nopensea.io/collection/bil...\n\nThank you @0xPolygon x @OpenSea",
         eventSummary: "Supermasks Mint LIVE - Official launch",
-        hasImage: true,
-        hasVideo: false,
+        hasImage: false,
+        hasVideo: true,
         likes: "2K",
         retweets: "618",
         replies: "525"
@@ -4142,5 +4142,6 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Clean up on page unload
 window.addEventListener('beforeunload', cleanupTimers);
+
 
 
