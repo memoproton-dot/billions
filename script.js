@@ -398,11 +398,27 @@ function hideVideoLoading() {
 // Ensure Billions logo is visible during loading
 function ensureProfilePictureVisible() {
     const avatarImg = document.querySelector('.avatar img');
-    if (avatarImg && avatarImg.src.includes('logo.jpg')) {
+    if (avatarImg) {
         // Ensure the logo is visible and loaded
+        avatarImg.src = 'logo.jpg';
         avatarImg.style.display = 'block';
         avatarImg.style.opacity = '1';
-        console.log('Billions profile picture is visible');
+        avatarImg.style.width = '100%';
+        avatarImg.style.height = '100%';
+        avatarImg.style.objectFit = 'cover';
+        avatarImg.style.borderRadius = '50%';
+        
+        // Force image reload to ensure it's visible
+        avatarImg.onload = function() {
+            console.log('Billions profile picture loaded successfully');
+        };
+        avatarImg.onerror = function() {
+            console.warn('Failed to load Billions profile picture');
+        };
+        
+        console.log('Billions profile picture visibility ensured');
+    } else {
+        console.warn('Avatar image element not found');
     }
 }
 
@@ -3796,6 +3812,29 @@ function updateUI() {
     elements.tweetLikes.textContent = tweet.likes;
     elements.tweetRetweets.textContent = tweet.retweets;
     elements.tweetReplies.textContent = tweet.replies;
+    
+    // Update profile picture to ensure it's visible for each tweet
+    const avatarImg = document.querySelector('.avatar img');
+    if (avatarImg) {
+        // Force refresh the profile picture
+        avatarImg.src = 'logo.jpg';
+        avatarImg.style.display = 'block';
+        avatarImg.style.opacity = '1';
+        avatarImg.style.width = '100%';
+        avatarImg.style.height = '100%';
+        avatarImg.style.objectFit = 'cover';
+        avatarImg.style.borderRadius = '50%';
+        
+        // Ensure it loads properly
+        setTimeout(() => {
+            if (avatarImg.src.includes('logo.jpg')) {
+                avatarImg.style.opacity = '1';
+                console.log('Profile picture confirmed visible for tweet', tweet.id);
+            }
+        }, 100);
+        
+        console.log('Profile picture refreshed for tweet', tweet.id);
+    }
     
     // Update event summary
     if (elements.eventSummaryText) {
