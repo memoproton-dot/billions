@@ -2427,8 +2427,8 @@ const timelineData = [
         verified: true,
         text: "Joined Billions lately? 👀\n\nHere's your fast-track to what's been happening:",
         eventSummary: "Recap Thread - What's been happening",
-        hasImage: true,
-        hasVideo: false,
+        hasImage: false,
+        hasVideo: true,
         hasQuote: true,
         quoteAuthor: "Ron",
         quoteHandle: "@onchainron",
@@ -4781,5 +4781,6 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
 
 
