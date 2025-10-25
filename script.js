@@ -3463,9 +3463,16 @@ function startTimeline() {
     startWaveAnimation();
 }
 
-// Update UI - Add proper cleanup and timing
+// Add a unique identifier for each tweet load operation
+let currentLoadId = 0;
+
+// Update UI - Add load tracking
 function updateUI() {
     const tweet = timelineData[state.currentIndex];
+    
+    // Increment load ID to invalidate previous async operations
+    currentLoadId++;
+    const thisLoadId = currentLoadId;
     
     // CRITICAL: Stop all ongoing animations first
     cleanupTimers();
@@ -3535,12 +3542,22 @@ function updateUI() {
         elements.articleEmbed.classList.add('hidden');
     }
     
+    // CRITICAL: Clear previous media sources immediately
+    elements.sideImage.removeAttribute('src');
+    elements.sideImage2.removeAttribute('src');
+    if (elements.mediaVideo.src) {
+        elements.mediaVideo.pause();
+        elements.mediaVideo.removeAttribute('src');
+        elements.mediaVideo.load();
+    }
+    
     // Pre-load media but keep hidden
     if (tweet.hasImage) {
         elements.sideImage2.classList.add('hidden');
         
         tryLoadImage(tweet.id, (result) => {
-            if (result !== 'placeholder' && !state.slideOut) {
+            // CRITICAL: Validate we're still on the same tweet
+            if (result !== 'placeholder' && !state.slideOut && thisLoadId === currentLoadId) {
                 if (result.type === 'multi') {
                     elements.sideImage.src = result.paths[0];
                     elements.sideImage2.src = result.paths[1];
@@ -3555,7 +3572,8 @@ function updateUI() {
                 } else {
                     const img = new Image();
                     img.onload = function() {
-                        if (!state.slideOut) {
+                        // Double-check we're still on the same tweet
+                        if (!state.slideOut && thisLoadId === currentLoadId) {
                             elements.sideImage.src = result.path;
                             elements.sideImage.style.height = '100%';
                             elements.sideImage2.classList.add('hidden');
@@ -3584,16 +3602,12 @@ function updateUI() {
         });
     } else if (tweet.hasVideo) {
         tryLoadVideo(tweet.id, (path) => {
-            if (path && !state.slideOut) {
+            // CRITICAL: Validate we're still on the same tweet
+            if (path && !state.slideOut && thisLoadId === currentLoadId) {
                 const imagePlaceholder = document.getElementById('imagePlaceholder');
                 const videoPlaceholder = document.getElementById('videoPlaceholder');
                 if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
                 if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
-                
-                // CRITICAL: Reset video element completely
-                elements.mediaVideo.pause();
-                elements.mediaVideo.removeAttribute('src');
-                elements.mediaVideo.load();
                 
                 // Set new source
                 elements.mediaVideo.src = path;
@@ -3601,7 +3615,8 @@ function updateUI() {
                 
                 // Wait for metadata before doing anything else
                 elements.mediaVideo.onloadedmetadata = function() {
-                    if (!state.slideOut) {
+                    // Triple-check we're still on the same tweet
+                    if (!state.slideOut && thisLoadId === currentLoadId) {
                         const aspectRatio = this.videoWidth / this.videoHeight;
                         const mediaContainer = elements.mediaVideo.closest('.media-container');
                         if (mediaContainer) {
@@ -3633,12 +3648,14 @@ function updateUI() {
     }
 }
 
-// Start wave animation - Add safeguards
+// Start wave animation - Add load ID tracking
 function startWaveAnimation() {
     // Clear any existing timers first
     cleanupTimers();
     
     const tweet = timelineData[state.currentIndex];
+    const tweetIndex = state.currentIndex;
+    const loadId = currentLoadId; // Capture current load ID
     const text = tweet.text;
     const words = text.split(' ');
     let currentWord = 0;
@@ -3648,19 +3665,19 @@ function startWaveAnimation() {
     elements.eventSummary.classList.add('hidden');
     
     function typeWord() {
-        // Check if we should stop (slideOut or moved to different tweet)
-        if (state.slideOut || currentWord >= words.length) {
-            if (state.slideOut) return; // Don't proceed if sliding out
+        // Check if we should stop
+        if (state.slideOut || currentWord >= words.length || tweetIndex !== state.currentIndex || loadId !== currentLoadId) {
+            if (state.slideOut || tweetIndex !== state.currentIndex || loadId !== currentLoadId) return;
             
             // Text complete, show event summary
             setTimeout(() => {
-                if (!state.slideOut && state.currentIndex === timelineData.indexOf(tweet)) {
+                if (!state.slideOut && tweetIndex === state.currentIndex && loadId === currentLoadId) {
                     elements.eventSummary.classList.remove('hidden');
                     
                     // Show media after a delay
                     setTimeout(() => {
-                        if (!state.slideOut && state.currentIndex === timelineData.indexOf(tweet)) {
-                            showMediaForCurrentTweet(tweet);
+                        if (!state.slideOut && tweetIndex === state.currentIndex && loadId === currentLoadId) {
+                            showMediaForCurrentTweet(tweet, loadId);
                         }
                     }, 300);
                 }
@@ -3678,11 +3695,22 @@ function startWaveAnimation() {
     typeWord();
 }
 
-// New helper function to show media
-function showMediaForCurrentTweet(tweet) {
-    if (state.slideOut) return;
+// New helper function to show media - Add load ID validation
+function showMediaForCurrentTweet(tweet, loadId) {
+    if (state.slideOut || loadId !== currentLoadId) return;
     
     if (tweet.hasImage && elements.sideImageDisplay && elements.sideImage.src) {
+        // Verify media is loaded and valid
+        if (!elements.sideImage.complete) {
+            // Image not fully loaded yet, wait a bit
+            setTimeout(() => {
+                if (!state.slideOut && loadId === currentLoadId) {
+                    showMediaForCurrentTweet(tweet, loadId);
+                }
+            }, 100);
+            return;
+        }
+        
         // Coordinate tweet shift and image slide-in
         elements.tweetCard.parentElement.classList.add('with-media');
         elements.sideImageDisplay.classList.remove('hidden');
@@ -3691,13 +3719,24 @@ function showMediaForCurrentTweet(tweet) {
         void elements.sideImageDisplay.offsetWidth;
         
         requestAnimationFrame(() => {
-            if (!state.slideOut) {
+            if (!state.slideOut && loadId === currentLoadId) {
                 elements.sideImageDisplay.classList.add('active');
             }
         });
     }
     
     if (tweet.hasVideo && elements.mediaOverlay && elements.mediaVideo.src) {
+        // Verify video metadata is loaded
+        if (elements.mediaVideo.readyState < 1) {
+            // Metadata not loaded yet, wait
+            setTimeout(() => {
+                if (!state.slideOut && loadId === currentLoadId) {
+                    showMediaForCurrentTweet(tweet, loadId);
+                }
+            }, 100);
+            return;
+        }
+        
         // Coordinate tweet shift and video slide-in
         elements.tweetCard.parentElement.classList.add('with-media');
         elements.mediaOverlay.classList.remove('hidden');
@@ -3706,19 +3745,19 @@ function showMediaForCurrentTweet(tweet) {
         void elements.mediaOverlay.offsetWidth;
         
         requestAnimationFrame(() => {
-            if (!state.slideOut) {
+            if (!state.slideOut && loadId === currentLoadId) {
                 elements.mediaOverlay.classList.add('active');
             }
         });
         
-        // Play video after animation completes AND metadata is loaded
+        // Play video after animation completes
         setTimeout(() => {
-            if (!state.slideOut && elements.mediaVideo.readyState >= 2) {
+            if (!state.slideOut && loadId === currentLoadId && elements.mediaVideo.readyState >= 2) {
                 elements.mediaVideo.play().catch(e => {
                     console.log('Video play error:', e);
                     // Retry once after a short delay
                     setTimeout(() => {
-                        if (!state.slideOut) {
+                        if (!state.slideOut && loadId === currentLoadId) {
                             elements.mediaVideo.play().catch(e => console.log('Video play retry failed:', e));
                         }
                     }, 500);
@@ -3729,11 +3768,13 @@ function showMediaForCurrentTweet(tweet) {
     }
 }
 
-// Handle next - Add better state management
+// Handle next - Add load ID tracking
 function handleNext() {
     if (state.currentIndex >= timelineData.length - 1) return;
     
     const tweet = timelineData[state.currentIndex];
+    const currentTweetIndex = state.currentIndex;
+    const loadId = currentLoadId;
     
     // Step 1: If text is still typing, complete it instantly
     if (state.textProgress < 1 && !state.isAnimating) {
@@ -3743,7 +3784,7 @@ function handleNext() {
         elements.eventSummary.classList.remove('hidden');
         
         // Show media immediately
-        showMediaForCurrentTweet(tweet);
+        showMediaForCurrentTweet(tweet, loadId);
         return;
     }
     
@@ -3752,7 +3793,7 @@ function handleNext() {
         !elements.sideImageDisplay.classList.contains('active') && 
         !elements.mediaOverlay.classList.contains('active') && 
         !state.isAnimating) {
-        showMediaForCurrentTweet(tweet);
+        showMediaForCurrentTweet(tweet, loadId);
         return;
     }
     
@@ -3818,6 +3859,73 @@ function handleNext() {
                 if (state.autoMode) {
                     handleAutoMode();
                 }
+            }, 50);
+        }, 500);
+    }
+}
+
+// Update handlePrevious similarly
+function handlePrevious() {
+    if (state.currentIndex > 0 && !state.isAnimating) {
+        // Clear all timers
+        cleanupTimers();
+        
+        state.autoMode = false;
+        state.isAnimating = true;
+        state.slideOut = true;
+        
+        // Play whoosh sound
+        playWhoosh();
+        
+        // Pause and cleanup video immediately
+        if (elements.mediaVideo.src) {
+            elements.mediaVideo.pause();
+            updateBackgroundMusicVolume();
+        }
+        
+        // Slide out in opposite direction
+        elements.tweetCard.classList.add('slide-out-right');
+        elements.sideImageDisplay.classList.remove('active');
+        elements.mediaOverlay.classList.remove('active');
+        
+        setTimeout(() => {
+            // Get skip value
+            const skipValue = parseInt(document.getElementById('skipInput').value) || 1;
+            state.currentIndex = Math.max(state.currentIndex - skipValue, 0);
+            
+            // Reset state
+            state.textProgress = 0;
+            state.showMedia = false;
+            state.slideOut = false;
+            state.isAnimating = false;
+            state.videoPaused = false;
+            
+            // Clean up video
+            if (elements.mediaVideo.src) {
+                elements.mediaVideo.pause();
+                elements.mediaVideo.currentTime = 0;
+                elements.mediaVideo.removeAttribute('src');
+                elements.mediaVideo.load();
+                updateBackgroundMusicVolume();
+            }
+            
+            // Clean up classes
+            elements.tweetCard.classList.remove('slide-out-left', 'slide-out-right');
+            elements.tweetCard.parentElement.classList.remove('with-media');
+            elements.mediaOverlay.classList.remove('active', 'slide-out-right');
+            elements.mediaOverlay.classList.add('hidden');
+            elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
+            elements.sideImageDisplay.classList.add('hidden');
+            elements.smallImagePreview.classList.add('hidden');
+            elements.smallVideoPreview.classList.add('hidden');
+            elements.eventSummary.classList.add('hidden');
+            
+            updateUI();
+            
+            setTimeout(() => {
+                startWaveAnimation();
+                updateDotTimeline();
+                updateMonthDisplay();
             }, 50);
         }, 500);
     }
@@ -4125,6 +4233,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Clean up on page unload
 window.addEventListener('beforeunload', cleanupTimers);
+
 
 
 
