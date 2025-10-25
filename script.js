@@ -2630,7 +2630,7 @@ const timelineData = [
         text: "Our friends at @KRNL_xyz took our verification tech and created beautiful sybil resistance with offchain ZK verification and onchain action.\n\nBuilt independently (plug-and-play). No personal data leaked.\n\nWhen builders have the right tools → magic happens 👇",
         eventSummary: "KRNL Labs Partnership - Sybil resistance implementation",
         hasImage: false,
-        hasVideo: true,
+        hasVideo: false,
         hasQuote: true,
         quoteAuthor: "KRNL Labs",
         quoteHandle: "@KRNL_xyz",
@@ -4142,4 +4142,5 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Clean up on page unload
 window.addEventListener('beforeunload', cleanupTimers);
+
 
