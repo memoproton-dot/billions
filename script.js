@@ -36,10 +36,15 @@ function tryLoadImage(id, callback) {
             const img2 = new Image();
             img2.onload = function() {
                 console.log('Multi-part images loaded for tweet', id);
+                
+                // Check if any part is a GIF
+                state.currentIsGif = img1.src.toLowerCase().includes('.gif') || img2.src.toLowerCase().includes('.gif');
+                
                 callback({ type: 'multi', paths: [img1.src, img2.src] });
             };
             img2.onerror = function() {
                 // Only first part exists
+                state.currentIsGif = img1.src.toLowerCase().includes('.gif');
                 callback({ type: 'single', path: img1.src });
             };
             img2.src = `${folder}/${id}(2).${ext}`;
@@ -76,6 +81,10 @@ function tryLoadImage(id, callback) {
         img.onload = function() {
             clearTimeout(timeout);
             console.log('Image loaded successfully:', path);
+            
+            // Check if this is a GIF
+            state.currentIsGif = path.toLowerCase().includes('.gif');
+            
             callback({ type: 'single', path: path });
         };
         
@@ -3345,7 +3354,8 @@ let state = {
     slideOut: false,
     autoMode: false,
     isMuted: false,
-    videoPaused: false
+    videoPaused: false,
+    currentIsGif: false
 };
 
 // DOM Elements
@@ -3415,6 +3425,7 @@ function init() {
     elements.smallImagePreview.addEventListener('click', showFullMedia);
     elements.smallVideoPreview.addEventListener('click', showFullMedia);
     elements.mediaVideo.addEventListener('ended', handleVideoEnd);
+    elements.mediaVideo.addEventListener('play', handleVideoPlay);
     
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
@@ -3731,15 +3742,23 @@ function handleAutoMode() {
     if (!state.autoMode) return;
     
     const tweet = timelineData[state.currentIndex];
-    let delay = 5000; // Base delay
     
-    // Add extra time if media is showing
-    if (state.showMedia) {
-        if (tweet.hasVideo && !state.videoPaused) {
-            // Wait for video to finish
-            return;
+    // For videos, don't set any timer - rely on video end event
+    if (tweet.hasVideo) {
+        return;
+    }
+    
+    let delay = 3000; // Base delay - changed to 3 seconds
+    
+    // Add extra time for images
+    if (tweet.hasImage) {
+        if (state.currentIsGif) {
+            // Wait longer for GIFs to play
+            delay += 5000; // Extra 5 seconds for GIFs (total 8 seconds)
+        } else {
+            // Extra time for regular images
+            delay += 3000; // Extra 3 seconds for images (total 6 seconds)
         }
-        delay += 3000;
     }
     
     autoTimer = setTimeout(() => {
@@ -3842,6 +3861,7 @@ function handleNext() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
+            state.currentIsGif = false;
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -3903,6 +3923,7 @@ function handlePrevious() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
+            state.currentIsGif = false;
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -3953,6 +3974,15 @@ function handleVideoEnd() {
         setTimeout(() => {
             handleNext();
         }, 1000);
+    }
+}
+
+// Handle video play
+function handleVideoPlay() {
+    // Cancel any existing auto timer when video starts playing
+    if (autoTimer) {
+        clearTimeout(autoTimer);
+        autoTimer = null;
     }
 }
 
@@ -4067,6 +4097,7 @@ function jumpToTweet(index) {
         state.showMedia = false;
         state.slideOut = false;
         state.isAnimating = false;
+        state.currentIsGif = false;
         
         elements.tweetCard.classList.remove('slide-out');
         updateUI();
@@ -4163,4 +4194,3 @@ function showFinalMessage() {
         }, 100);
     }
 }
-
