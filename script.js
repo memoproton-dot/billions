@@ -3345,8 +3345,7 @@ let state = {
     slideOut: false,
     autoMode: false,
     isMuted: false,
-    videoPaused: false,
-    mediaLoaded: false
+    videoPaused: false
 };
 
 // DOM Elements
@@ -3529,7 +3528,6 @@ function updateUI() {
                         sideImageContent.classList.remove('horizontal', 'vertical', 'square');
                         sideImageContent.classList.add('multi-part');
                     }
-                    state.mediaLoaded = true;
                 } else {
                     // Single image
                     const img = new Image();
@@ -3551,7 +3549,6 @@ function updateUI() {
                                 sideImageContent.classList.add('square');
                             }
                         }
-                        state.mediaLoaded = true;
                     };
                     img.src = result.path;
                 }
@@ -3589,7 +3586,6 @@ function updateUI() {
                             mediaContainer.classList.add('square');
                         }
                     }
-                    state.mediaLoaded = true;
                 };
                 
                 // Reset to hidden state
@@ -3740,13 +3736,6 @@ function handleAutoMode() {
         delay += 3000;
     }
     
-    // Wait for media to load before setting timer
-    if ((tweet.hasImage || tweet.hasVideo) && !state.mediaLoaded) {
-        // Media is not loaded yet, wait a bit and check again
-        setTimeout(() => handleAutoMode(), 100);
-        return;
-    }
-    
     autoTimer = setTimeout(() => {
         if (state.autoMode && state.currentIndex < timelineData.length - 1) {
             handleNext();
@@ -3843,7 +3832,6 @@ function handleNext() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
-            state.mediaLoaded = false;
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -3905,7 +3893,6 @@ function handlePrevious() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
-            state.mediaLoaded = false;
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -4070,7 +4057,6 @@ function jumpToTweet(index) {
         state.showMedia = false;
         state.slideOut = false;
         state.isAnimating = false;
-        state.mediaLoaded = false;
         
         elements.tweetCard.classList.remove('slide-out');
         updateUI();
