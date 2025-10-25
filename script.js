@@ -3250,8 +3250,8 @@ const timelineData = [
         verified: true,
         text: "Saving the Internet in the AI Era 👥\n\nOur cofounder David Z. @davidsrz broke down Billions' 3-phase vision at @zeroknowledgefm",
         eventSummary: "3-Phase Vision - Saving the Internet in AI Era",
-        hasImage: true,
-        hasVideo: false,
+        hasImage: false,
+        hasVideo: true,
         likes: "719",
         retweets: "127",
         replies: "180"
@@ -3320,8 +3320,8 @@ const timelineData = [
         verified: true,
         text: "You × 2,000,000 = 💙\n\nIn this universe, you are the gBillionth star 💫\n\nNext stop: 3M!",
         eventSummary: "2 Million Milestone - Community celebration",
-        hasImage: true,
-        hasVideo: false,
+        hasImage: false,
+        hasVideo: true,
         likes: "1.6K",
         retweets: "342",
         replies: "344"
@@ -4781,6 +4781,7 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
 
 
 
