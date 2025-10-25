@@ -122,412 +122,6 @@ function tryLoadVideo(id, callback) {
     tryNext();
 }
 
-// Media Preloader Class for efficient caching and preloading
-class MediaPreloader {
-    constructor() {
-        this.cache = new Map();
-        this.preloadQueue = [];
-        this.maxCacheSize = 25; // Increased cache size
-        this.preloadRange = 8; // Increased preload range (was 3)
-        this.loadingPromises = new Map(); // Prevent duplicate loads
-        this.preloadTimeout = null; // For delayed preloading
-    }
-    
-    // Preload media for timeline items
-    async preloadMedia(timelineData, currentIndex) {
-        // Clear any existing preload timeout
-        if (this.preloadTimeout) {
-            clearTimeout(this.preloadTimeout);
-        }
-        
-        // Immediate preload for nearby items
-        const immediateRange = 3;
-        const immediateStart = Math.max(0, currentIndex - immediateRange);
-        const immediateEnd = Math.min(timelineData.length, currentIndex + immediateRange);
-        
-        // Delayed preload for distant items
-        this.preloadTimeout = setTimeout(() => {
-            this.preloadDistantMedia(timelineData, currentIndex);
-        }, 500);
-        
-        // Preload immediate items first
-        const immediatePromises = [];
-        for (let i = immediateStart; i < immediateEnd; i++) {
-            const tweet = timelineData[i];
-            
-            if (tweet.hasImage && !this.cache.has(`img_${tweet.id}`)) {
-                immediatePromises.push(this.preloadImage(tweet.id));
-            }
-            if (tweet.hasVideo && !this.cache.has(`vid_${tweet.id}`)) {
-                immediatePromises.push(this.preloadVideo(tweet.id));
-            }
-        }
-        
-        // Load immediate items in parallel
-        Promise.allSettled(immediatePromises).then(() => {
-            console.log(`Immediate preload completed for items ${immediateStart}-${immediateEnd}`);
-        });
-    }
-    
-    // Preload distant media items
-    async preloadDistantMedia(timelineData, currentIndex) {
-        const startIndex = Math.max(0, currentIndex - this.preloadRange);
-        const endIndex = Math.min(timelineData.length, currentIndex + this.preloadRange);
-        
-        const preloadPromises = [];
-        
-        for (let i = startIndex; i < endIndex; i++) {
-            const tweet = timelineData[i];
-            
-            if (tweet.hasImage && !this.cache.has(`img_${tweet.id}`)) {
-                preloadPromises.push(this.preloadImage(tweet.id));
-            }
-            if (tweet.hasVideo && !this.cache.has(`vid_${tweet.id}`)) {
-                preloadPromises.push(this.preloadVideo(tweet.id));
-            }
-        }
-        
-        // Load in parallel but don't block UI
-        Promise.allSettled(preloadPromises).then(() => {
-            console.log(`Distant preload completed for items ${startIndex}-${endIndex}`);
-        });
-    }
-    
-    // Preload image with caching
-    async preloadImage(id) {
-        const cacheKey = `img_${id}`;
-        
-        // Return cached version if available
-        if (this.cache.has(cacheKey)) {
-            return this.cache.get(cacheKey);
-        }
-        
-        // Prevent duplicate loading
-        if (this.loadingPromises.has(cacheKey)) {
-            return this.loadingPromises.get(cacheKey);
-        }
-        
-        const loadPromise = new Promise((resolve) => {
-            const paths = getMediaPaths(id, 'image');
-            let currentIndex = 0;
-            
-            // Check for multi-part images first
-            const folder = 'images-videos';
-            const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
-            let multiPartIndex = 0;
-            
-            function tryMultiPart() {
-                if (multiPartIndex >= extensions.length) {
-                    tryNext();
-                    return;
-                }
-                
-                const ext = extensions[multiPartIndex];
-                const img1 = new Image();
-                
-                img1.onload = function() {
-                    const img2 = new Image();
-                    img2.onload = function() {
-                        const result = { type: 'multi', paths: [img1.src, img2.src], images: [img1, img2] };
-                        resolve(result);
-                    };
-                    img2.onerror = function() {
-                        const result = { type: 'single', path: img1.src, image: img1 };
-                        resolve(result);
-                    };
-                    img2.src = `${folder}/${id}(2).${ext}`;
-                };
-                
-                img1.onerror = function() {
-                    multiPartIndex++;
-                    tryMultiPart();
-                };
-                
-                img1.src = `${folder}/${id}(1).${ext}`;
-            }
-            
-            function tryNext() {
-                if (currentIndex >= paths.length) {
-                    resolve('placeholder');
-                    return;
-                }
-                
-                const img = new Image();
-                const path = paths[currentIndex];
-                
-                const timeout = setTimeout(() => {
-                    currentIndex++;
-                    tryNext();
-                }, 300); // Shorter timeout for preloading
-                
-                img.onload = function() {
-                    clearTimeout(timeout);
-                    const result = { type: 'single', path: path, image: img };
-                    resolve(result);
-                };
-                
-                img.onerror = function() {
-                    clearTimeout(timeout);
-                    currentIndex++;
-                    tryNext();
-                };
-                
-                img.src = path;
-            }
-            
-            tryMultiPart();
-        });
-        
-        this.loadingPromises.set(cacheKey, loadPromise);
-        
-        try {
-            const result = await loadPromise;
-            if (result !== 'placeholder') {
-                this.cache.set(cacheKey, result);
-                this.manageCacheSize();
-            }
-            this.loadingPromises.delete(cacheKey);
-            return result;
-        } catch (error) {
-            this.loadingPromises.delete(cacheKey);
-            return 'placeholder';
-        }
-    }
-    
-    // Preload video with caching
-    async preloadVideo(id) {
-        const cacheKey = `vid_${id}`;
-        
-        if (this.cache.has(cacheKey)) {
-            return this.cache.get(cacheKey);
-        }
-        
-        if (this.loadingPromises.has(cacheKey)) {
-            return this.loadingPromises.get(cacheKey);
-        }
-        
-        const loadPromise = new Promise((resolve) => {
-            const paths = getMediaPaths(id, 'video');
-            let currentIndex = 0;
-            
-            function tryNext() {
-                if (currentIndex >= paths.length) {
-                    resolve(null);
-                    return;
-                }
-                
-                const path = paths[currentIndex];
-                const video = document.createElement('video');
-                video.preload = 'metadata'; // Only load metadata for preloading
-                
-                video.onloadedmetadata = function() {
-                    resolve({ path: path, video: video });
-                };
-                
-                video.onerror = function() {
-                    currentIndex++;
-                    tryNext();
-                };
-                
-                video.src = path;
-            }
-            
-            tryNext();
-        });
-        
-        this.loadingPromises.set(cacheKey, loadPromise);
-        
-        try {
-            const result = await loadPromise;
-            if (result) {
-                this.cache.set(cacheKey, result);
-                this.manageCacheSize();
-            }
-            this.loadingPromises.delete(cacheKey);
-            return result;
-        } catch (error) {
-            this.loadingPromises.delete(cacheKey);
-            return null;
-        }
-    }
-    
-    // Get cached media
-    getCachedImage(id) {
-        return this.cache.get(`img_${id}`);
-    }
-    
-    getCachedVideo(id) {
-        return this.cache.get(`vid_${id}`);
-    }
-    
-    // Force load media if not cached (for distant tweets)
-    async forceLoadMedia(id, type) {
-        console.log(`Force loading ${type} for tweet ${id}`);
-        if (type === 'image') {
-            return await this.preloadImage(id);
-        } else if (type === 'video') {
-            return await this.preloadVideo(id);
-        }
-        return null;
-    }
-    
-    // Manage cache size to prevent memory issues
-    manageCacheSize() {
-        if (this.cache.size > this.maxCacheSize) {
-            const entries = Array.from(this.cache.entries());
-            // Remove oldest entries (simple LRU approximation)
-            const toRemove = entries.slice(0, entries.length - this.maxCacheSize);
-            toRemove.forEach(([key, value]) => {
-                this.cache.delete(key);
-                // Clean up DOM elements if they exist
-                if (value.image) {
-                    value.image.src = '';
-                }
-                if (value.images) {
-                    value.images.forEach(img => img.src = '');
-                }
-                if (value.video) {
-                    value.video.src = '';
-                }
-            });
-        }
-    }
-    
-    // Clear all cached media
-    clearCache() {
-        this.cache.forEach((value) => {
-            if (value.image) {
-                value.image.src = '';
-            }
-            if (value.images) {
-                value.images.forEach(img => img.src = '');
-            }
-            if (value.video) {
-                value.video.src = '';
-            }
-        });
-        this.cache.clear();
-        this.loadingPromises.clear();
-    }
-}
-
-// Initialize global preloader instance
-const mediaPreloader = new MediaPreloader();
-
-// Loading state management functions
-function showImageLoading() {
-    const placeholder = document.getElementById('imageLoadingPlaceholder');
-    if (placeholder) {
-        placeholder.classList.remove('hidden');
-    }
-}
-
-function hideImageLoading() {
-    const placeholder = document.getElementById('imageLoadingPlaceholder');
-    if (placeholder) {
-        placeholder.classList.add('hidden');
-    }
-}
-
-function showVideoLoading() {
-    const overlay = document.getElementById('videoLoadingOverlay');
-    if (overlay) {
-        overlay.classList.remove('hidden');
-    }
-}
-
-function hideVideoLoading() {
-    const overlay = document.getElementById('videoLoadingOverlay');
-    if (overlay) {
-        overlay.classList.add('hidden');
-    }
-}
-
-// Ensure Billions logo is visible during loading
-function ensureProfilePictureVisible() {
-    const avatarImg = document.querySelector('.avatar img');
-    if (avatarImg) {
-        // Ensure the logo is visible and loaded
-        avatarImg.src = 'logo.jpg';
-        avatarImg.style.display = 'block';
-        avatarImg.style.opacity = '1';
-        avatarImg.style.width = '100%';
-        avatarImg.style.height = '100%';
-        avatarImg.style.objectFit = 'cover';
-        avatarImg.style.borderRadius = '50%';
-        
-        // Force image reload to ensure it's visible
-        avatarImg.onload = function() {
-            console.log('Billions profile picture loaded successfully');
-        };
-        avatarImg.onerror = function() {
-            console.warn('Failed to load Billions profile picture');
-        };
-        
-        console.log('Billions profile picture visibility ensured');
-    } else {
-        console.warn('Avatar image element not found');
-    }
-}
-
-// Memory cleanup and performance monitoring
-function cleanupMediaMemory() {
-    // Clean up unused media elements
-    const allImages = document.querySelectorAll('img[src]');
-    const allVideos = document.querySelectorAll('video[src]');
-    
-    // Clean up images that are not currently visible
-    allImages.forEach(img => {
-        // Skip profile picture and other essential images
-        if (img.closest('.avatar') || img.src.includes('logo.jpg') || img.src.includes('favicon')) {
-            return; // Don't clean up profile pictures and essential images
-        }
-        
-        if (!img.closest('.side-image-display.active') && 
-            !img.closest('.media-overlay.active') &&
-            img.src && img.src !== '') {
-            // Clear src to free memory
-            img.src = '';
-        }
-    });
-    
-    // Clean up videos that are not currently visible
-    allVideos.forEach(video => {
-        if (!video.closest('.media-overlay.active') && 
-            video.src && video.src !== '') {
-            // Pause and clear video
-            video.pause();
-            video.currentTime = 0;
-            video.src = '';
-        }
-    });
-    
-    // Clean up preloader cache
-    mediaPreloader.manageCacheSize();
-    
-    console.log('Media memory cleanup completed (profile pictures preserved)');
-}
-
-// Performance monitoring
-function trackMediaPerformance() {
-    if ('PerformanceObserver' in window) {
-        const observer = new PerformanceObserver((list) => {
-            list.getEntries().forEach(entry => {
-                if (entry.name.includes('image') || entry.name.includes('video')) {
-                    console.log(`Media load time: ${entry.duration}ms for ${entry.name}`);
-                }
-            });
-        });
-        observer.observe({ entryTypes: ['resource'] });
-    }
-}
-
-// Initialize performance monitoring
-trackMediaPerformance();
-
-// Periodic cleanup every 30 seconds
-setInterval(cleanupMediaMemory, 30000);
-
 // Timeline Data
 const timelineData = [
     {
@@ -2427,8 +2021,8 @@ const timelineData = [
         verified: true,
         text: "Joined Billions lately? 👀\n\nHere's your fast-track to what's been happening:",
         eventSummary: "Recap Thread - What's been happening",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         hasQuote: true,
         quoteAuthor: "Ron",
         quoteHandle: "@onchainron",
@@ -2825,8 +2419,8 @@ const timelineData = [
         verified: true,
         text: "Hey Web3 builders 👋\n\nTraditional KYC can kill onboarding.\n\nThat's why Billions is pioneering Progressive Identity Verification, a smarter way to verify users are real without hurting UX.",
         eventSummary: "Progressive KYC - Identity verification innovation",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         likes: "1.9K",
         retweets: "582",
         replies: "478"
@@ -3070,7 +2664,7 @@ const timelineData = [
         verified: true,
         text: "gBillions fam iconic 🅱️💙🇰🇷",
         eventSummary: "KBW Community Gathering - Iconic moments",
-        hasImage: true,
+        hasImage: false,
         hasVideo: false,
         hasQuote: true,
         quoteAuthor: "evin",
@@ -3250,8 +2844,8 @@ const timelineData = [
         verified: true,
         text: "Saving the Internet in the AI Era 👥\n\nOur cofounder David Z. @davidsrz broke down Billions' 3-phase vision at @zeroknowledgefm",
         eventSummary: "3-Phase Vision - Saving the Internet in AI Era",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         likes: "719",
         retweets: "127",
         replies: "180"
@@ -3320,8 +2914,8 @@ const timelineData = [
         verified: true,
         text: "You × 2,000,000 = 💙\n\nIn this universe, you are the gBillionth star 💫\n\nNext stop: 3M!",
         eventSummary: "2 Million Milestone - Community celebration",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         likes: "1.6K",
         retweets: "342",
         replies: "344"
@@ -3846,12 +3440,6 @@ function startTimeline() {
     playBackgroundMusic();
     updateUI();
     startWaveAnimation();
-    
-    // Ensure Billions profile picture is visible
-    ensureProfilePictureVisible();
-    
-    // Start initial media preloading
-    mediaPreloader.preloadMedia(timelineData, state.currentIndex);
 }
 
 // Update UI
@@ -3865,29 +3453,6 @@ function updateUI() {
     elements.tweetLikes.textContent = tweet.likes;
     elements.tweetRetweets.textContent = tweet.retweets;
     elements.tweetReplies.textContent = tweet.replies;
-    
-    // Update profile picture to ensure it's visible for each tweet
-    const avatarImg = document.querySelector('.avatar img');
-    if (avatarImg) {
-        // Force refresh the profile picture
-        avatarImg.src = 'logo.jpg';
-        avatarImg.style.display = 'block';
-        avatarImg.style.opacity = '1';
-        avatarImg.style.width = '100%';
-        avatarImg.style.height = '100%';
-        avatarImg.style.objectFit = 'cover';
-        avatarImg.style.borderRadius = '50%';
-        
-        // Ensure it loads properly
-        setTimeout(() => {
-            if (avatarImg.src.includes('logo.jpg')) {
-                avatarImg.style.opacity = '1';
-                console.log('Profile picture confirmed visible for tweet', tweet.id);
-            }
-        }, 100);
-        
-        console.log('Profile picture refreshed for tweet', tweet.id);
-    }
     
     // Update event summary
     if (elements.eventSummaryText) {
@@ -3911,9 +3476,6 @@ function updateUI() {
     elements.prevBtn.disabled = state.currentIndex === 0;
     // Keep next button enabled to show final message
     elements.nextBtn.disabled = false;
-    
-    // Ensure Billions profile picture is visible
-    ensureProfilePictureVisible();
     
     // Handle quote tweets - NO EMBEDDED MEDIA, just show quote
     if (tweet.hasQuote) {
@@ -3953,72 +3515,30 @@ function updateUI() {
         // Hide second image by default
         elements.sideImage2.classList.add('hidden');
         
-        // Show loading placeholder
-        showImageLoading();
-        
-        // Try to get cached media first
-        const cachedImage = mediaPreloader.getCachedImage(tweet.id);
-        if (cachedImage) {
-            // Use cached image immediately
-            hideImageLoading();
-            if (cachedImage.type === 'multi') {
-                elements.sideImage.src = cachedImage.paths[0];
-                elements.sideImage2.src = cachedImage.paths[1];
-                elements.sideImage2.classList.remove('hidden');
-                elements.sideImage.style.height = 'auto';
-                
-                const sideImageContent = document.getElementById('sideImageContent');
-                if (sideImageContent) {
-                    sideImageContent.classList.remove('horizontal', 'vertical', 'square');
-                    sideImageContent.classList.add('multi-part');
-                }
-            } else {
-                elements.sideImage.src = cachedImage.path;
-                elements.sideImage.style.height = '100%';
-                elements.sideImage2.classList.add('hidden');
-                
-                // Detect aspect ratio and apply appropriate class
-                const aspectRatio = cachedImage.image.width / cachedImage.image.height;
-                const sideImageContent = document.getElementById('sideImageContent');
-                if (sideImageContent) {
-                    sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                    if (aspectRatio > 1.3) {
-                        sideImageContent.classList.add('horizontal');
-                    } else if (aspectRatio < 0.8) {
-                        sideImageContent.classList.add('vertical');
-                    } else {
-                        sideImageContent.classList.add('square');
+        tryLoadImage(tweet.id, (result) => {
+            if (result !== 'placeholder') {
+                if (result.type === 'multi') {
+                    // Multi-part image
+                    elements.sideImage.src = result.paths[0];
+                    elements.sideImage2.src = result.paths[1];
+                    elements.sideImage2.classList.remove('hidden');
+                    elements.sideImage.style.height = 'auto';
+                    
+                    const sideImageContent = document.getElementById('sideImageContent');
+                    if (sideImageContent) {
+                        sideImageContent.classList.remove('horizontal', 'vertical', 'square');
+                        sideImageContent.classList.add('multi-part');
                     }
-                }
-            }
-            
-            // Reset to hidden state
-            elements.sideImageDisplay.classList.add('hidden');
-            elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
-        } else {
-            // Try force loading first, then fallback to original method
-            mediaPreloader.forceLoadMedia(tweet.id, 'image').then((cachedResult) => {
-                if (cachedResult && cachedResult !== 'placeholder') {
-                    hideImageLoading();
-                    // Use the force-loaded cached result
-                    if (cachedResult.type === 'multi') {
-                        elements.sideImage.src = cachedResult.paths[0];
-                        elements.sideImage2.src = cachedResult.paths[1];
-                        elements.sideImage2.classList.remove('hidden');
-                        elements.sideImage.style.height = 'auto';
-                        
-                        const sideImageContent = document.getElementById('sideImageContent');
-                        if (sideImageContent) {
-                            sideImageContent.classList.remove('horizontal', 'vertical', 'square');
-                            sideImageContent.classList.add('multi-part');
-                        }
-                    } else {
-                        elements.sideImage.src = cachedResult.path;
+                } else {
+                    // Single image
+                    const img = new Image();
+                    img.onload = function() {
+                        elements.sideImage.src = result.path;
                         elements.sideImage.style.height = '100%';
                         elements.sideImage2.classList.add('hidden');
                         
                         // Detect aspect ratio and apply appropriate class
-                        const aspectRatio = cachedResult.image.width / cachedResult.image.height;
+                        const aspectRatio = img.width / img.height;
                         const sideImageContent = document.getElementById('sideImageContent');
                         if (sideImageContent) {
                             sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
@@ -4030,179 +3550,51 @@ function updateUI() {
                                 sideImageContent.classList.add('square');
                             }
                         }
-                    }
-                    
-                    // Reset to hidden state
-                    elements.sideImageDisplay.classList.add('hidden');
-                    elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
-                } else {
-                    // Fallback to original loading method
-                    tryLoadImage(tweet.id, (result) => {
-                        hideImageLoading();
-                        if (result !== 'placeholder') {
-                            if (result.type === 'multi') {
-                                // Multi-part image
-                                elements.sideImage.src = result.paths[0];
-                                elements.sideImage2.src = result.paths[1];
-                                elements.sideImage2.classList.remove('hidden');
-                                elements.sideImage.style.height = 'auto';
-                                
-                                const sideImageContent = document.getElementById('sideImageContent');
-                                if (sideImageContent) {
-                                    sideImageContent.classList.remove('horizontal', 'vertical', 'square');
-                                    sideImageContent.classList.add('multi-part');
-                                }
-                            } else {
-                                // Single image
-                                const img = new Image();
-                                img.onload = function() {
-                                    elements.sideImage.src = result.path;
-                                    elements.sideImage.style.height = '100%';
-                                    elements.sideImage2.classList.add('hidden');
-                                    
-                                    // Detect aspect ratio and apply appropriate class
-                                    const aspectRatio = img.width / img.height;
-                                    const sideImageContent = document.getElementById('sideImageContent');
-                                    if (sideImageContent) {
-                                        sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                                        if (aspectRatio > 1.3) {
-                                            sideImageContent.classList.add('horizontal');
-                                        } else if (aspectRatio < 0.8) {
-                                            sideImageContent.classList.add('vertical');
-                                        } else {
-                                            sideImageContent.classList.add('square');
-                                        }
-                                    }
-                                };
-                                img.src = result.path;
-                            }
-                            
-                            // Reset to hidden state
-                            elements.sideImageDisplay.classList.add('hidden');
-                            elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
-                        }
-                    });
-                }
-            });
-        }
-    } else if (tweet.hasVideo) {
-        // Show loading overlay
-        showVideoLoading();
-        
-        // Try to get cached video first
-        const cachedVideo = mediaPreloader.getCachedVideo(tweet.id);
-        if (cachedVideo) {
-            // Use cached video immediately
-            hideVideoLoading();
-            // Hide image placeholder, show video placeholder
-            const imagePlaceholder = document.getElementById('imagePlaceholder');
-            const videoPlaceholder = document.getElementById('videoPlaceholder');
-            if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
-            if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
-            
-            elements.mediaVideo.src = cachedVideo.path;
-            elements.mediaVideo.load();
-            elements.mediaVideo.muted = false; // Videos play with sound
-            elements.mediaVideo.pause(); // Don't auto-play yet
-            
-            // Detect video aspect ratio when metadata loads
-            elements.mediaVideo.onloadedmetadata = function() {
-                const aspectRatio = this.videoWidth / this.videoHeight;
-                const mediaContainer = elements.mediaVideo.closest('.media-container');
-                if (mediaContainer) {
-                    mediaContainer.classList.remove('horizontal', 'vertical', 'square');
-                    if (aspectRatio > 1.3) {
-                        mediaContainer.classList.add('horizontal');
-                    } else if (aspectRatio < 0.8) {
-                        mediaContainer.classList.add('vertical');
-                    } else {
-                        mediaContainer.classList.add('square');
-                    }
-                }
-            };
-            
-            // Reset to hidden state
-            elements.sideImageDisplay.classList.add('hidden');
-            elements.mediaOverlay.classList.add('hidden');
-            elements.mediaOverlay.classList.remove('active', 'slide-out-right');
-        } else {
-            // Try force loading first, then fallback to original method
-            mediaPreloader.forceLoadMedia(tweet.id, 'video').then((cachedResult) => {
-                if (cachedResult) {
-                    hideVideoLoading();
-                    // Use the force-loaded cached result
-                    // Hide image placeholder, show video placeholder
-                    const imagePlaceholder = document.getElementById('imagePlaceholder');
-                    const videoPlaceholder = document.getElementById('videoPlaceholder');
-                    if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
-                    if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
-                    
-                    elements.mediaVideo.src = cachedResult.path;
-                    elements.mediaVideo.load();
-                    elements.mediaVideo.muted = false; // Videos play with sound
-                    elements.mediaVideo.pause(); // Don't auto-play yet
-                    
-                    // Detect video aspect ratio when metadata loads
-                    elements.mediaVideo.onloadedmetadata = function() {
-                        const aspectRatio = this.videoWidth / this.videoHeight;
-                        const mediaContainer = elements.mediaVideo.closest('.media-container');
-                        if (mediaContainer) {
-                            mediaContainer.classList.remove('horizontal', 'vertical', 'square');
-                            if (aspectRatio > 1.3) {
-                                mediaContainer.classList.add('horizontal');
-                            } else if (aspectRatio < 0.8) {
-                                mediaContainer.classList.add('vertical');
-                            } else {
-                                mediaContainer.classList.add('square');
-                            }
-                        }
                     };
-                    
-                    // Reset to hidden state
-                    elements.sideImageDisplay.classList.add('hidden');
-                    elements.mediaOverlay.classList.add('hidden');
-                    elements.mediaOverlay.classList.remove('active', 'slide-out-right');
-                } else {
-                    // Fallback to original loading method
-                    tryLoadVideo(tweet.id, (path) => {
-                        hideVideoLoading();
-                        if (path) {
-                            // Hide image placeholder, show video placeholder
-                            const imagePlaceholder = document.getElementById('imagePlaceholder');
-                            const videoPlaceholder = document.getElementById('videoPlaceholder');
-                            if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
-                            if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
-                            
-                            elements.mediaVideo.src = path;
-                            elements.mediaVideo.load();
-                            elements.mediaVideo.muted = false; // Videos play with sound
-                            elements.mediaVideo.pause(); // Don't auto-play yet
-                            
-                            // Detect video aspect ratio when metadata loads
-                            elements.mediaVideo.onloadedmetadata = function() {
-                                const aspectRatio = this.videoWidth / this.videoHeight;
-                                const mediaContainer = elements.mediaVideo.closest('.media-container');
-                                if (mediaContainer) {
-                                    mediaContainer.classList.remove('horizontal', 'vertical', 'square');
-                                    if (aspectRatio > 1.3) {
-                                        mediaContainer.classList.add('horizontal');
-                                    } else if (aspectRatio < 0.8) {
-                                        mediaContainer.classList.add('vertical');
-                                    } else {
-                                        mediaContainer.classList.add('square');
-                                    }
-                                }
-                            };
-                            
-                            // Reset to hidden state
-                            elements.sideImageDisplay.classList.add('hidden');
-                            elements.mediaOverlay.classList.add('hidden');
-                            elements.mediaOverlay.classList.remove('active', 'slide-out-right');
-                        }
-                    });
+                    img.src = result.path;
                 }
-            });
-        }
+                
+                // Reset to hidden state
+                elements.sideImageDisplay.classList.add('hidden');
+                elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
+            }
+        });
+    } else if (tweet.hasVideo) {
+        tryLoadVideo(tweet.id, (path) => {
+            if (path) {
+                // Hide image placeholder, show video placeholder
+                const imagePlaceholder = document.getElementById('imagePlaceholder');
+                const videoPlaceholder = document.getElementById('videoPlaceholder');
+                if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
+                if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
+                
+                elements.mediaVideo.src = path;
+                elements.mediaVideo.load();
+                elements.mediaVideo.muted = false; // Videos play with sound
+                elements.mediaVideo.pause(); // Don't auto-play yet
+                
+                // Detect video aspect ratio when metadata loads
+                elements.mediaVideo.onloadedmetadata = function() {
+                    const aspectRatio = this.videoWidth / this.videoHeight;
+                    const mediaContainer = elements.mediaVideo.closest('.media-container');
+                    if (mediaContainer) {
+                        mediaContainer.classList.remove('horizontal', 'vertical', 'square');
+                        if (aspectRatio > 1.3) {
+                            mediaContainer.classList.add('horizontal');
+                        } else if (aspectRatio < 0.8) {
+                            mediaContainer.classList.add('vertical');
+                        } else {
+                            mediaContainer.classList.add('square');
+                        }
+                    }
+                };
+                
+                // Reset to hidden state
+                elements.sideImageDisplay.classList.add('hidden');
+                elements.mediaOverlay.classList.add('hidden');
+                elements.mediaOverlay.classList.remove('active', 'slide-out-right');
+            }
+        });
     } else {
         // No media - hide side displays and remove with-media class
         elements.sideImageDisplay.classList.add('hidden');
@@ -4463,16 +3855,10 @@ function handleNext() {
             elements.sideImageDisplay.classList.add('hidden');
             elements.eventSummary.classList.add('hidden');
             
-            // Clean up memory before loading new content
-            cleanupMediaMemory();
-            
             updateUI();
             startWaveAnimation();
             updateDotTimeline();
             updateMonthDisplay();
-            
-            // Preload media for upcoming tweets
-            mediaPreloader.preloadMedia(timelineData, state.currentIndex);
             
             if (state.autoMode) {
                 handleAutoMode();
@@ -4531,16 +3917,10 @@ function handlePrevious() {
             elements.smallVideoPreview.classList.add('hidden');
             elements.eventSummary.classList.add('hidden');
             
-            // Clean up memory before loading new content
-            cleanupMediaMemory();
-            
             updateUI();
             startWaveAnimation();
             updateDotTimeline();
             updateMonthDisplay();
-            
-            // Preload media for upcoming tweets
-            mediaPreloader.preloadMedia(timelineData, state.currentIndex);
         }, 500);
     }
 }
@@ -4688,9 +4068,6 @@ function jumpToTweet(index) {
         startWaveAnimation();
         updateDotTimeline();
         updateMonthDisplay();
-        
-        // Preload media for upcoming tweets
-        mediaPreloader.preloadMedia(timelineData, state.currentIndex);
         
         if (state.autoMode) {
             handleAutoMode();
