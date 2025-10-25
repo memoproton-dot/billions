@@ -71,7 +71,7 @@ function tryLoadImage(id, callback) {
             console.log('Timeout loading:', path, '- trying next extension');
             currentIndex++;
             tryNext();
-        }, 2000);
+        }, 500);
         
         img.onload = function() {
             clearTimeout(timeout);
@@ -105,21 +105,13 @@ function tryLoadVideo(id, callback) {
         const path = paths[currentIndex];
         const video = document.createElement('video');
         
-        const timeout = setTimeout(() => {
-            console.log('Timeout loading video:', path, '- trying next extension');
-            currentIndex++;
-            tryNext();
-        }, 2000);
-        
         video.onloadeddata = function() {
-            clearTimeout(timeout);
             console.log('Video loaded successfully:', path);
             callback(path);
         };
         
         video.onerror = function() {
-            clearTimeout(timeout);
-            console.log('Failed to load video:', path, '- trying next extension');
+            console.log('Failed to load:', path, '- trying next extension');
             currentIndex++;
             tryNext();
         };
@@ -3353,8 +3345,7 @@ let state = {
     slideOut: false,
     autoMode: false,
     isMuted: false,
-    videoPaused: false,
-    mediaLoaded: false
+    videoPaused: false
 };
 
 // DOM Elements
@@ -3455,12 +3446,6 @@ function startTimeline() {
 function updateUI() {
     const tweet = timelineData[state.currentIndex];
     
-    // Hide media displays initially to prevent flash of old content
-    elements.sideImageDisplay.classList.add('hidden');
-    elements.sideImageDisplay.classList.remove('active');
-    elements.mediaOverlay.classList.add('hidden');
-    elements.mediaOverlay.classList.remove('active');
-    
     // Update tweet content
     elements.tweetAuthor.textContent = tweet.author;
     elements.tweetHandle.textContent = tweet.handle;
@@ -3543,7 +3528,6 @@ function updateUI() {
                         sideImageContent.classList.remove('horizontal', 'vertical', 'square');
                         sideImageContent.classList.add('multi-part');
                     }
-                    state.mediaLoaded = true;
                 } else {
                     // Single image
                     const img = new Image();
@@ -3565,17 +3549,11 @@ function updateUI() {
                                 sideImageContent.classList.add('square');
                             }
                         }
-                        state.mediaLoaded = true;
                     };
                     img.src = result.path;
                 }
                 
                 // Reset to hidden state
-                elements.sideImageDisplay.classList.add('hidden');
-                elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
-            } else {
-                // Placeholder case - still mark as loaded so auto-slide can proceed
-                state.mediaLoaded = true;
                 elements.sideImageDisplay.classList.add('hidden');
                 elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
             }
@@ -3595,7 +3573,7 @@ function updateUI() {
                 elements.mediaVideo.pause(); // Don't auto-play yet
                 
                 // Detect video aspect ratio when metadata loads
-                elements.mediaVideo.onloadeddata = function() {
+                elements.mediaVideo.onloadedmetadata = function() {
                     const aspectRatio = this.videoWidth / this.videoHeight;
                     const mediaContainer = elements.mediaVideo.closest('.media-container');
                     if (mediaContainer) {
@@ -3608,16 +3586,9 @@ function updateUI() {
                             mediaContainer.classList.add('square');
                         }
                     }
-                    state.mediaLoaded = true;
                 };
                 
                 // Reset to hidden state
-                elements.sideImageDisplay.classList.add('hidden');
-                elements.mediaOverlay.classList.add('hidden');
-                elements.mediaOverlay.classList.remove('active', 'slide-out-right');
-            } else {
-                // No video found - mark as loaded so auto-slide can proceed
-                state.mediaLoaded = true;
                 elements.sideImageDisplay.classList.add('hidden');
                 elements.mediaOverlay.classList.add('hidden');
                 elements.mediaOverlay.classList.remove('active', 'slide-out-right');
@@ -3630,7 +3601,6 @@ function updateUI() {
         elements.mediaOverlay.classList.add('hidden');
         elements.mediaOverlay.classList.remove('active', 'slide-out-right');
         elements.tweetCard.parentElement.classList.remove('with-media');
-        state.mediaLoaded = true;
     }
 }
 
@@ -3766,13 +3736,6 @@ function handleAutoMode() {
         delay += 3000;
     }
     
-    // Wait for media to load before setting timer
-    if ((tweet.hasImage || tweet.hasVideo) && !state.mediaLoaded) {
-        // Media is not loaded yet, wait a bit and check again
-        setTimeout(() => handleAutoMode(), 100);
-        return;
-    }
-    
     autoTimer = setTimeout(() => {
         if (state.autoMode && state.currentIndex < timelineData.length - 1) {
             handleNext();
@@ -3851,16 +3814,6 @@ function handleNext() {
         // Play whoosh sound
         playWhoosh();
         
-        // Clear media sources immediately to prevent flash of previous images
-        if (elements.sideImage.src) {
-            elements.sideImage.src = '';
-            elements.sideImage2.src = '';
-        }
-        if (elements.mediaVideo.src) {
-            elements.mediaVideo.src = '';
-            elements.mediaVideo.load();
-        }
-        
         // Slide out tweet to LEFT and media to RIGHT simultaneously
         elements.tweetCard.classList.add('slide-out-left');
         elements.sideImageDisplay.classList.remove('active');
@@ -3879,7 +3832,6 @@ function handleNext() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
-            state.mediaLoaded = false;
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -3923,16 +3875,6 @@ function handlePrevious() {
         // Play whoosh sound
         playWhoosh();
         
-        // Clear media sources immediately to prevent flash of previous images
-        if (elements.sideImage.src) {
-            elements.sideImage.src = '';
-            elements.sideImage2.src = '';
-        }
-        if (elements.mediaVideo.src) {
-            elements.mediaVideo.src = '';
-            elements.mediaVideo.load();
-        }
-        
         // Slide out in opposite direction (to the right)
         elements.tweetCard.classList.add('slide-out-right');
         elements.sideImageDisplay.classList.remove('active');
@@ -3951,7 +3893,6 @@ function handlePrevious() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
-            state.mediaLoaded = false;
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -4110,23 +4051,12 @@ function jumpToTweet(index) {
     
     elements.tweetCard.classList.add('slide-out');
     
-    // Clear media sources immediately to prevent flash of previous images
-    if (elements.sideImage.src) {
-        elements.sideImage.src = '';
-        elements.sideImage2.src = '';
-    }
-    if (elements.mediaVideo.src) {
-        elements.mediaVideo.src = '';
-        elements.mediaVideo.load();
-    }
-    
     setTimeout(() => {
         state.currentIndex = index;
         state.textProgress = 0;
         state.showMedia = false;
         state.slideOut = false;
         state.isAnimating = false;
-        state.mediaLoaded = false;
         
         elements.tweetCard.classList.remove('slide-out');
         updateUI();
