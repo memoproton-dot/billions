@@ -36,15 +36,10 @@ function tryLoadImage(id, callback) {
             const img2 = new Image();
             img2.onload = function() {
                 console.log('Multi-part images loaded for tweet', id);
-                
-                // Check if any part is a GIF
-                state.currentIsGif = img1.src.toLowerCase().includes('.gif') || img2.src.toLowerCase().includes('.gif');
-                
                 callback({ type: 'multi', paths: [img1.src, img2.src] });
             };
             img2.onerror = function() {
                 // Only first part exists
-                state.currentIsGif = img1.src.toLowerCase().includes('.gif');
                 callback({ type: 'single', path: img1.src });
             };
             img2.src = `${folder}/${id}(2).${ext}`;
@@ -76,15 +71,11 @@ function tryLoadImage(id, callback) {
             console.log('Timeout loading:', path, '- trying next extension');
             currentIndex++;
             tryNext();
-        }, 5500);
+        }, 500);
         
         img.onload = function() {
             clearTimeout(timeout);
             console.log('Image loaded successfully:', path);
-            
-            // Check if this is a GIF
-            state.currentIsGif = path.toLowerCase().includes('.gif');
-            
             callback({ type: 'single', path: path });
         };
         
@@ -2030,8 +2021,8 @@ const timelineData = [
         verified: true,
         text: "Joined Billions lately? 👀\n\nHere's your fast-track to what's been happening:",
         eventSummary: "Recap Thread - What's been happening",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         hasQuote: true,
         quoteAuthor: "Ron",
         quoteHandle: "@onchainron",
@@ -2428,8 +2419,8 @@ const timelineData = [
         verified: true,
         text: "Hey Web3 builders 👋\n\nTraditional KYC can kill onboarding.\n\nThat's why Billions is pioneering Progressive Identity Verification, a smarter way to verify users are real without hurting UX.",
         eventSummary: "Progressive KYC - Identity verification innovation",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         likes: "1.9K",
         retweets: "582",
         replies: "478"
@@ -2758,8 +2749,8 @@ const timelineData = [
         verified: true,
         text: "Bots and sybils draining your airdrop? Not on our watch 🚫\n\nBillions' Secure Token Distribution makes sure only real humans get rewarded — protecting your treasury & building real community trust.\n\nDM @ravikantagrawal for a demo 💪",
         eventSummary: "Secure Token Distribution - Anti-bot solution",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         likes: "893",
         retweets: "209",
         replies: "264"
@@ -2853,8 +2844,8 @@ const timelineData = [
         verified: true,
         text: "Saving the Internet in the AI Era 👥\n\nOur cofounder David Z. @davidsrz broke down Billions' 3-phase vision at @zeroknowledgefm",
         eventSummary: "3-Phase Vision - Saving the Internet in AI Era",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         likes: "719",
         retweets: "127",
         replies: "180"
@@ -2923,8 +2914,8 @@ const timelineData = [
         verified: true,
         text: "You × 2,000,000 = 💙\n\nIn this universe, you are the gBillionth star 💫\n\nNext stop: 3M!",
         eventSummary: "2 Million Milestone - Community celebration",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         likes: "1.6K",
         retweets: "342",
         replies: "344"
@@ -2988,8 +2979,8 @@ const timelineData = [
         verified: true,
         text: "Supermasks Mint is LIVE! 👥\n\nMint yours now 👇\nopensea.io/collection/bil...\n\nThank you @0xPolygon x @OpenSea",
         eventSummary: "Supermasks Mint LIVE - Official launch",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         likes: "2K",
         retweets: "618",
         replies: "525"
@@ -3355,7 +3346,7 @@ let state = {
     autoMode: false,
     isMuted: false,
     videoPaused: false,
-    currentIsGif: false
+    mediaLoaded: false
 };
 
 // DOM Elements
@@ -3405,7 +3396,6 @@ function init() {
         quoteAuthor: document.getElementById('quoteAuthor'),
         quoteHandle: document.getElementById('quoteHandle'),
         quoteText: document.getElementById('quoteText'),
-        quoteAvatar: document.querySelector('.quote-avatar'),
         spacesEmbed: document.getElementById('spacesEmbed'),
         spacesTitle: document.getElementById('spacesTitle'),
         spacesInfo: document.getElementById('spacesInfo'),
@@ -3425,7 +3415,6 @@ function init() {
     elements.smallImagePreview.addEventListener('click', showFullMedia);
     elements.smallVideoPreview.addEventListener('click', showFullMedia);
     elements.mediaVideo.addEventListener('ended', handleVideoEnd);
-    elements.mediaVideo.addEventListener('play', handleVideoPlay);
     
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
@@ -3486,8 +3475,7 @@ function updateUI() {
     
     // Update buttons
     elements.prevBtn.disabled = state.currentIndex === 0;
-    // Keep next button enabled to show final message
-    elements.nextBtn.disabled = false;
+    elements.nextBtn.disabled = state.currentIndex === timelineData.length - 1;
     
     // Handle quote tweets - NO EMBEDDED MEDIA, just show quote
     if (tweet.hasQuote) {
@@ -3495,10 +3483,6 @@ function updateUI() {
         elements.quoteAuthor.textContent = tweet.quoteAuthor;
         elements.quoteHandle.textContent = tweet.quoteHandle;
         elements.quoteText.textContent = tweet.quoteText;
-        // Set quote avatar to first letter of author name
-        if (elements.quoteAvatar && tweet.quoteAuthor) {
-            elements.quoteAvatar.textContent = tweet.quoteAuthor.charAt(0).toUpperCase();
-        }
     } else {
         elements.quoteContainer.classList.add('hidden');
     }
@@ -3545,6 +3529,7 @@ function updateUI() {
                         sideImageContent.classList.remove('horizontal', 'vertical', 'square');
                         sideImageContent.classList.add('multi-part');
                     }
+                    state.mediaLoaded = true;
                 } else {
                     // Single image
                     const img = new Image();
@@ -3566,6 +3551,7 @@ function updateUI() {
                                 sideImageContent.classList.add('square');
                             }
                         }
+                        state.mediaLoaded = true;
                     };
                     img.src = result.path;
                 }
@@ -3603,6 +3589,7 @@ function updateUI() {
                             mediaContainer.classList.add('square');
                         }
                     }
+                    state.mediaLoaded = true;
                 };
                 
                 // Reset to hidden state
@@ -3742,23 +3729,22 @@ function handleAutoMode() {
     if (!state.autoMode) return;
     
     const tweet = timelineData[state.currentIndex];
+    let delay = 5000; // Base delay
     
-    // For videos, don't set any timer - rely on video end event
-    if (tweet.hasVideo) {
-        return;
+    // Add extra time if media is showing
+    if (state.showMedia) {
+        if (tweet.hasVideo && !state.videoPaused) {
+            // Wait for video to finish
+            return;
+        }
+        delay += 3000;
     }
     
-    let delay = 3000; // Base delay - changed to 3 seconds
-    
-    // Add extra time for images
-    if (tweet.hasImage) {
-        if (state.currentIsGif) {
-            // Wait longer for GIFs to play
-            delay += 5000; // Extra 5 seconds for GIFs (total 8 seconds)
-        } else {
-            // Extra time for regular images
-            delay += 3000; // Extra 3 seconds for images (total 6 seconds)
-        }
+    // Wait for media to load before setting timer
+    if ((tweet.hasImage || tweet.hasVideo) && !state.mediaLoaded) {
+        // Media is not loaded yet, wait a bit and check again
+        setTimeout(() => handleAutoMode(), 100);
+        return;
     }
     
     autoTimer = setTimeout(() => {
@@ -3770,11 +3756,7 @@ function handleAutoMode() {
 
 // Handle next - completes current step before moving
 function handleNext() {
-    if (state.currentIndex >= timelineData.length - 1) {
-        // Show final message when at the end
-        showFinalMessage();
-        return;
-    }
+    if (state.currentIndex >= timelineData.length - 1) return;
     
     const tweet = timelineData[state.currentIndex];
     
@@ -3861,7 +3843,7 @@ function handleNext() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
-            state.currentIsGif = false;
+            state.mediaLoaded = false;
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -3923,7 +3905,7 @@ function handlePrevious() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
-            state.currentIsGif = false;
+            state.mediaLoaded = false;
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -3974,15 +3956,6 @@ function handleVideoEnd() {
         setTimeout(() => {
             handleNext();
         }, 1000);
-    }
-}
-
-// Handle video play
-function handleVideoPlay() {
-    // Cancel any existing auto timer when video starts playing
-    if (autoTimer) {
-        clearTimeout(autoTimer);
-        autoTimer = null;
     }
 }
 
@@ -4097,7 +4070,7 @@ function jumpToTweet(index) {
         state.showMedia = false;
         state.slideOut = false;
         state.isAnimating = false;
-        state.currentIsGif = false;
+        state.mediaLoaded = false;
         
         elements.tweetCard.classList.remove('slide-out');
         updateUI();
@@ -4183,15 +4156,3 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Clean up on page unload
 window.addEventListener('beforeunload', cleanupTimers);
-
-// Show final message when reaching the end
-function showFinalMessage() {
-    const finalMessage = document.getElementById('finalMessage');
-    if (finalMessage) {
-        finalMessage.classList.remove('hidden');
-        setTimeout(() => {
-            finalMessage.classList.add('show');
-        }, 100);
-    }
-}
-
