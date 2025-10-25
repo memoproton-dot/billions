@@ -3235,8 +3235,8 @@ const timelineData = [
         verified: true,
         text: "👥 Supermasks x @KaitoAI 🌊\n\nOur 2nd NFT collection drops Oct 6\n\nOne of the main utilities? Kaito leaderboard boost!\n\nAnd the Kaito community is getting rewarded with NFTs:\n– Top 500 Billions yappers (30d/90d)\n– Top 100 Yapybaras NFT holders\n– 100 random Yapybaras NFT holders",
         eventSummary: "Kaito Partnership - Supermasks utility announcement",
-        hasImage: true,
-        hasVideo: false,
+        hasImage: false,
+        hasVideo: true,
         likes: "1.4K",
         retweets: "459",
         replies: "517"
@@ -4781,4 +4781,5 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
 
