@@ -3474,7 +3474,8 @@ function updateUI() {
     
     // Update buttons
     elements.prevBtn.disabled = state.currentIndex === 0;
-    elements.nextBtn.disabled = state.currentIndex === timelineData.length - 1;
+    // Keep next button enabled to show final message
+    elements.nextBtn.disabled = false;
     
     // Handle quote tweets - NO EMBEDDED MEDIA, just show quote
     if (tweet.hasQuote) {
@@ -3745,7 +3746,11 @@ function handleAutoMode() {
 
 // Handle next - completes current step before moving
 function handleNext() {
-    if (state.currentIndex >= timelineData.length - 1) return;
+    if (state.currentIndex >= timelineData.length - 1) {
+        // Show final message when at the end
+        showFinalMessage();
+        return;
+    }
     
     const tweet = timelineData[state.currentIndex];
     
@@ -4143,5 +4148,13 @@ document.addEventListener('DOMContentLoaded', init);
 // Clean up on page unload
 window.addEventListener('beforeunload', cleanupTimers);
 
-
-
+// Show final message when reaching the end
+function showFinalMessage() {
+    const finalMessage = document.getElementById('finalMessage');
+    if (finalMessage) {
+        finalMessage.classList.remove('hidden');
+        setTimeout(() => {
+            finalMessage.classList.add('show');
+        }, 100);
+    }
+}
