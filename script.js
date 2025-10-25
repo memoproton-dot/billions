@@ -1,29 +1,29 @@
 // Helper function to get all possible media paths
+// Better media path handling
 function getMediaPaths(id, type) {
-    const folder = './images-videos';
+    const folder = './images-videos';  // Relative path
     if (type === 'image') {
-        const extensions = ['png', 'gif'];
+        // Try lowercase first (most common)
+        const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
         return extensions.map(ext => `${folder}/${id}.${ext}`);
     } else if (type === 'video') {
-        const extensions = ['mp4'];
+        const extensions = ['mp4', 'webm', 'mov'];
         return extensions.map(ext => `${folder}/${id}.${ext}`);
     }
     return [];
 }
 
-// Try to load image with multiple extensions and multi-part support
+// More robust image loading with longer timeout
 function tryLoadImage(id, callback) {
     const paths = getMediaPaths(id, 'image');
     let currentIndex = 0;
     
-    // Check for multi-part images (e.g., 106(1).png and 106(2).png)
-    const folder = './images-videos';
-    const extensions = ['png', 'gif'];
+    const folder = './images-videos';  // Relative path
+    const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
     let multiPartIndex = 0;
     
     function tryMultiPart() {
         if (multiPartIndex >= extensions.length) {
-            // No multi-part found, try regular image
             tryNext();
             return;
         }
@@ -31,22 +31,35 @@ function tryLoadImage(id, callback) {
         const ext = extensions[multiPartIndex];
         const img1 = new Image();
         
+        const timeout1 = setTimeout(() => {
+            multiPartIndex++;
+            tryMultiPart();
+        }, 2000);  // Increased timeout
+        
         img1.onload = function() {
-            // Found multi-part image, check for second part
+            clearTimeout(timeout1);
             const img2 = new Image();
+            
+            const timeout2 = setTimeout(() => {
+                callback({ type: 'single', path: img1.src });
+            }, 2000);
+            
             img2.onload = function() {
+                clearTimeout(timeout2);
                 console.log('Multi-part images loaded for tweet', id);
                 callback({ type: 'multi', paths: [img1.src, img2.src] });
             };
+            
             img2.onerror = function() {
-                // Only first part exists
+                clearTimeout(timeout2);
                 callback({ type: 'single', path: img1.src });
             };
+            
             img2.src = `${folder}/${id}(2).${ext}`;
         };
         
         img1.onerror = function() {
-            // Try next extension
+            clearTimeout(timeout1);
             multiPartIndex++;
             tryMultiPart();
         };
@@ -54,12 +67,11 @@ function tryLoadImage(id, callback) {
         img1.src = `${folder}/${id}(1).${ext}`;
     }
     
-    // Try multi-part first
     tryMultiPart();
     
     function tryNext() {
         if (currentIndex >= paths.length) {
-            console.warn('No valid image found for tweet', id, '- showing placeholder');
+            console.warn('No valid image found for tweet', id);
             callback('placeholder');
             return;
         }
@@ -68,10 +80,10 @@ function tryLoadImage(id, callback) {
         const path = paths[currentIndex];
         
         const timeout = setTimeout(() => {
-            console.log('Timeout loading:', path, '- trying next extension');
+            console.log('Timeout loading:', path);
             currentIndex++;
             tryNext();
-        }, 2000);
+        }, 2000);  // Increased timeout
         
         img.onload = function() {
             clearTimeout(timeout);
@@ -81,7 +93,7 @@ function tryLoadImage(id, callback) {
         
         img.onerror = function() {
             clearTimeout(timeout);
-            console.log('Failed to load:', path, '- trying next extension');
+            console.log('Failed to load:', path);
             currentIndex++;
             tryNext();
         };
@@ -4208,5 +4220,6 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Clean up on page unload
 window.addEventListener('beforeunload', cleanupTimers);
+
 
 
