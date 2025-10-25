@@ -1,6 +1,6 @@
 // Helper function to get all possible media paths
 function getMediaPaths(id, type) {
-    const folder = 'images-videos';
+    const folder = './images-videos';
     if (type === 'image') {
         const extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
         return extensions.map(ext => `${folder}/${id}.${ext}`);
@@ -17,7 +17,7 @@ function tryLoadImage(id, callback) {
     let currentIndex = 0;
     
     // Check for multi-part images (e.g., 106(1).png and 106(2).png)
-    const folder = 'images-videos';
+    const folder = './images-videos';
     const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
     let multiPartIndex = 0;
     
@@ -3530,6 +3530,7 @@ function updateUI() {
         elements.sideImage2.classList.add('hidden');
         
         tryLoadImage(tweet.id, (result) => {
+            console.log(`Tweet ${tweet.id} image result:`, result);
             if (result !== 'placeholder') {
                 if (result.type === 'multi') {
                     // Multi-part image
@@ -3739,6 +3740,7 @@ function showMediaForCurrentTweet() {
             elements.sideImageDisplay.classList.add('active');
         });
         state.showMedia = true;
+        console.log(`Showing image for tweet ${tweet.id}`);
     }
     
     if (tweet.hasVideo && elements.mediaVideo.src && !elements.mediaOverlay.classList.contains('active')) {
