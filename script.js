@@ -1911,7 +1911,7 @@ const timelineData = [
         text: "🛠️ Scheduled Maintenance – Billions Test Network\n\nThis Monday, July 21 – 10:00 CET, we're upgrading the test network (⏳ ~3h).\n\nDuring that time:\n– You won't be able to get or verify credentials\n– Wallet features may be down\n\nPlan ahead. It's all part of making Billions better 💪",
         eventSummary: "Test Network Maintenance - Scheduled upgrade",
         hasImage: false,
-        hasVideo: false,
+        hasVideo: true,
         likes: "649",
         retweets: "89",
         replies: "139"
@@ -4781,6 +4781,7 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
 
 
 
