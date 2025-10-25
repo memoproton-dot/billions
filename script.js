@@ -3727,12 +3727,21 @@ function showFullMedia() {
 function showMediaForCurrentTweet() {
     const tweet = timelineData[state.currentIndex];
     
+    console.log(`showMediaForCurrentTweet called for tweet ${tweet.id}`);
+    console.log(`Conditions: slideOut=${state.slideOut}, textProgress=${state.textProgress}, showMedia=${state.showMedia}`);
+    console.log(`Image src: ${elements.sideImage.src}`);
+    console.log(`Image display active: ${elements.sideImageDisplay.classList.contains('active')}`);
+    console.log(`Event summary hidden: ${elements.eventSummary.classList.contains('hidden')}`);
+    
     // Only show if text is complete and not sliding out
-    if (state.slideOut || state.textProgress < 1 || state.showMedia) {
+    const textComplete = !elements.eventSummary.classList.contains('hidden');
+    if (state.slideOut || !textComplete || state.showMedia) {
+        console.log(`Not showing media: slideOut=${state.slideOut}, textComplete=${textComplete}, showMedia=${state.showMedia}`);
         return;
     }
     
     if (tweet.hasImage && elements.sideImage.src && !elements.sideImageDisplay.classList.contains('active')) {
+        console.log(`Showing image for tweet ${tweet.id}`);
         // Coordinate tweet shift and image slide-in
         elements.tweetCard.parentElement.classList.add('with-media');
         elements.sideImageDisplay.classList.remove('hidden');
@@ -3740,7 +3749,8 @@ function showMediaForCurrentTweet() {
             elements.sideImageDisplay.classList.add('active');
         });
         state.showMedia = true;
-        console.log(`Showing image for tweet ${tweet.id}`);
+    } else {
+        console.log(`Not showing image: hasImage=${tweet.hasImage}, src=${!!elements.sideImage.src}, active=${elements.sideImageDisplay.classList.contains('active')}`);
     }
     
     if (tweet.hasVideo && elements.mediaVideo.src && !elements.mediaOverlay.classList.contains('active')) {
@@ -3751,6 +3761,7 @@ function showMediaForCurrentTweet() {
             elements.mediaOverlay.classList.add('active');
         });
         state.showMedia = true;
+        console.log(`Showing video for tweet ${tweet.id}`);
         // Play video after animation completes
         setTimeout(() => {
             if (!state.slideOut && elements.mediaVideo.paused) {
