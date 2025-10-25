@@ -395,6 +395,17 @@ function hideVideoLoading() {
     }
 }
 
+// Ensure Billions logo is visible during loading
+function ensureProfilePictureVisible() {
+    const avatarImg = document.querySelector('.avatar img');
+    if (avatarImg && avatarImg.src.includes('logo.jpg')) {
+        // Ensure the logo is visible and loaded
+        avatarImg.style.display = 'block';
+        avatarImg.style.opacity = '1';
+        console.log('Billions profile picture is visible');
+    }
+}
+
 // Memory cleanup and performance monitoring
 function cleanupMediaMemory() {
     // Clean up unused media elements
@@ -3767,6 +3778,9 @@ function startTimeline() {
     updateUI();
     startWaveAnimation();
     
+    // Ensure Billions profile picture is visible
+    ensureProfilePictureVisible();
+    
     // Start initial media preloading
     mediaPreloader.preloadMedia(timelineData, state.currentIndex);
 }
@@ -3805,6 +3819,9 @@ function updateUI() {
     elements.prevBtn.disabled = state.currentIndex === 0;
     // Keep next button enabled to show final message
     elements.nextBtn.disabled = false;
+    
+    // Ensure Billions profile picture is visible
+    ensureProfilePictureVisible();
     
     // Handle quote tweets - NO EMBEDDED MEDIA, just show quote
     if (tweet.hasQuote) {
