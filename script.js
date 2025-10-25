@@ -3070,7 +3070,7 @@ const timelineData = [
         verified: true,
         text: "gBillions fam iconic 🅱️💙🇰🇷",
         eventSummary: "KBW Community Gathering - Iconic moments",
-        hasImage: false,
+        hasImage: true,
         hasVideo: false,
         hasQuote: true,
         quoteAuthor: "evin",
@@ -4781,3 +4781,4 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
