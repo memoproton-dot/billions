@@ -127,13 +127,50 @@ class MediaPreloader {
     constructor() {
         this.cache = new Map();
         this.preloadQueue = [];
-        this.maxCacheSize = 15; // Limit memory usage
-        this.preloadRange = 3; // Preload 3 items ahead/behind
+        this.maxCacheSize = 25; // Increased cache size
+        this.preloadRange = 8; // Increased preload range (was 3)
         this.loadingPromises = new Map(); // Prevent duplicate loads
+        this.preloadTimeout = null; // For delayed preloading
     }
     
     // Preload media for timeline items
     async preloadMedia(timelineData, currentIndex) {
+        // Clear any existing preload timeout
+        if (this.preloadTimeout) {
+            clearTimeout(this.preloadTimeout);
+        }
+        
+        // Immediate preload for nearby items
+        const immediateRange = 3;
+        const immediateStart = Math.max(0, currentIndex - immediateRange);
+        const immediateEnd = Math.min(timelineData.length, currentIndex + immediateRange);
+        
+        // Delayed preload for distant items
+        this.preloadTimeout = setTimeout(() => {
+            this.preloadDistantMedia(timelineData, currentIndex);
+        }, 500);
+        
+        // Preload immediate items first
+        const immediatePromises = [];
+        for (let i = immediateStart; i < immediateEnd; i++) {
+            const tweet = timelineData[i];
+            
+            if (tweet.hasImage && !this.cache.has(`img_${tweet.id}`)) {
+                immediatePromises.push(this.preloadImage(tweet.id));
+            }
+            if (tweet.hasVideo && !this.cache.has(`vid_${tweet.id}`)) {
+                immediatePromises.push(this.preloadVideo(tweet.id));
+            }
+        }
+        
+        // Load immediate items in parallel
+        Promise.allSettled(immediatePromises).then(() => {
+            console.log(`Immediate preload completed for items ${immediateStart}-${immediateEnd}`);
+        });
+    }
+    
+    // Preload distant media items
+    async preloadDistantMedia(timelineData, currentIndex) {
         const startIndex = Math.max(0, currentIndex - this.preloadRange);
         const endIndex = Math.min(timelineData.length, currentIndex + this.preloadRange);
         
@@ -152,7 +189,7 @@ class MediaPreloader {
         
         // Load in parallel but don't block UI
         Promise.allSettled(preloadPromises).then(() => {
-            console.log(`Preloaded media for items ${startIndex}-${endIndex}`);
+            console.log(`Distant preload completed for items ${startIndex}-${endIndex}`);
         });
     }
     
@@ -323,6 +360,17 @@ class MediaPreloader {
         return this.cache.get(`vid_${id}`);
     }
     
+    // Force load media if not cached (for distant tweets)
+    async forceLoadMedia(id, type) {
+        console.log(`Force loading ${type} for tweet ${id}`);
+        if (type === 'image') {
+            return await this.preloadImage(id);
+        } else if (type === 'video') {
+            return await this.preloadVideo(id);
+        }
+        return null;
+    }
+    
     // Manage cache size to prevent memory issues
     manageCacheSize() {
         if (this.cache.size > this.maxCacheSize) {
@@ -430,6 +478,11 @@ function cleanupMediaMemory() {
     
     // Clean up images that are not currently visible
     allImages.forEach(img => {
+        // Skip profile picture and other essential images
+        if (img.closest('.avatar') || img.src.includes('logo.jpg') || img.src.includes('favicon')) {
+            return; // Don't clean up profile pictures and essential images
+        }
+        
         if (!img.closest('.side-image-display.active') && 
             !img.closest('.media-overlay.active') &&
             img.src && img.src !== '') {
@@ -452,7 +505,7 @@ function cleanupMediaMemory() {
     // Clean up preloader cache
     mediaPreloader.manageCacheSize();
     
-    console.log('Media memory cleanup completed');
+    console.log('Media memory cleanup completed (profile pictures preserved)');
 }
 
 // Performance monitoring
@@ -3943,14 +3996,14 @@ function updateUI() {
             elements.sideImageDisplay.classList.add('hidden');
             elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
         } else {
-            // Fallback to original loading method if not cached
-            tryLoadImage(tweet.id, (result) => {
-                hideImageLoading();
-                if (result !== 'placeholder') {
-                    if (result.type === 'multi') {
-                        // Multi-part image
-                        elements.sideImage.src = result.paths[0];
-                        elements.sideImage2.src = result.paths[1];
+            // Try force loading first, then fallback to original method
+            mediaPreloader.forceLoadMedia(tweet.id, 'image').then((cachedResult) => {
+                if (cachedResult && cachedResult !== 'placeholder') {
+                    hideImageLoading();
+                    // Use the force-loaded cached result
+                    if (cachedResult.type === 'multi') {
+                        elements.sideImage.src = cachedResult.paths[0];
+                        elements.sideImage2.src = cachedResult.paths[1];
                         elements.sideImage2.classList.remove('hidden');
                         elements.sideImage.style.height = 'auto';
                         
@@ -3960,33 +4013,75 @@ function updateUI() {
                             sideImageContent.classList.add('multi-part');
                         }
                     } else {
-                        // Single image
-                        const img = new Image();
-                        img.onload = function() {
-                            elements.sideImage.src = result.path;
-                            elements.sideImage.style.height = '100%';
-                            elements.sideImage2.classList.add('hidden');
-                            
-                            // Detect aspect ratio and apply appropriate class
-                            const aspectRatio = img.width / img.height;
-                            const sideImageContent = document.getElementById('sideImageContent');
-                            if (sideImageContent) {
-                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                                if (aspectRatio > 1.3) {
-                                    sideImageContent.classList.add('horizontal');
-                                } else if (aspectRatio < 0.8) {
-                                    sideImageContent.classList.add('vertical');
-                                } else {
-                                    sideImageContent.classList.add('square');
-                                }
+                        elements.sideImage.src = cachedResult.path;
+                        elements.sideImage.style.height = '100%';
+                        elements.sideImage2.classList.add('hidden');
+                        
+                        // Detect aspect ratio and apply appropriate class
+                        const aspectRatio = cachedResult.image.width / cachedResult.image.height;
+                        const sideImageContent = document.getElementById('sideImageContent');
+                        if (sideImageContent) {
+                            sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                            if (aspectRatio > 1.3) {
+                                sideImageContent.classList.add('horizontal');
+                            } else if (aspectRatio < 0.8) {
+                                sideImageContent.classList.add('vertical');
+                            } else {
+                                sideImageContent.classList.add('square');
                             }
-                        };
-                        img.src = result.path;
+                        }
                     }
                     
                     // Reset to hidden state
                     elements.sideImageDisplay.classList.add('hidden');
                     elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
+                } else {
+                    // Fallback to original loading method
+                    tryLoadImage(tweet.id, (result) => {
+                        hideImageLoading();
+                        if (result !== 'placeholder') {
+                            if (result.type === 'multi') {
+                                // Multi-part image
+                                elements.sideImage.src = result.paths[0];
+                                elements.sideImage2.src = result.paths[1];
+                                elements.sideImage2.classList.remove('hidden');
+                                elements.sideImage.style.height = 'auto';
+                                
+                                const sideImageContent = document.getElementById('sideImageContent');
+                                if (sideImageContent) {
+                                    sideImageContent.classList.remove('horizontal', 'vertical', 'square');
+                                    sideImageContent.classList.add('multi-part');
+                                }
+                            } else {
+                                // Single image
+                                const img = new Image();
+                                img.onload = function() {
+                                    elements.sideImage.src = result.path;
+                                    elements.sideImage.style.height = '100%';
+                                    elements.sideImage2.classList.add('hidden');
+                                    
+                                    // Detect aspect ratio and apply appropriate class
+                                    const aspectRatio = img.width / img.height;
+                                    const sideImageContent = document.getElementById('sideImageContent');
+                                    if (sideImageContent) {
+                                        sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                        if (aspectRatio > 1.3) {
+                                            sideImageContent.classList.add('horizontal');
+                                        } else if (aspectRatio < 0.8) {
+                                            sideImageContent.classList.add('vertical');
+                                        } else {
+                                            sideImageContent.classList.add('square');
+                                        }
+                                    }
+                                };
+                                img.src = result.path;
+                            }
+                            
+                            // Reset to hidden state
+                            elements.sideImageDisplay.classList.add('hidden');
+                            elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
+                        }
+                    });
                 }
             });
         }
@@ -4031,17 +4126,18 @@ function updateUI() {
             elements.mediaOverlay.classList.add('hidden');
             elements.mediaOverlay.classList.remove('active', 'slide-out-right');
         } else {
-            // Fallback to original loading method if not cached
-            tryLoadVideo(tweet.id, (path) => {
-                hideVideoLoading();
-                if (path) {
+            // Try force loading first, then fallback to original method
+            mediaPreloader.forceLoadMedia(tweet.id, 'video').then((cachedResult) => {
+                if (cachedResult) {
+                    hideVideoLoading();
+                    // Use the force-loaded cached result
                     // Hide image placeholder, show video placeholder
                     const imagePlaceholder = document.getElementById('imagePlaceholder');
                     const videoPlaceholder = document.getElementById('videoPlaceholder');
                     if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
                     if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
                     
-                    elements.mediaVideo.src = path;
+                    elements.mediaVideo.src = cachedResult.path;
                     elements.mediaVideo.load();
                     elements.mediaVideo.muted = false; // Videos play with sound
                     elements.mediaVideo.pause(); // Don't auto-play yet
@@ -4066,6 +4162,44 @@ function updateUI() {
                     elements.sideImageDisplay.classList.add('hidden');
                     elements.mediaOverlay.classList.add('hidden');
                     elements.mediaOverlay.classList.remove('active', 'slide-out-right');
+                } else {
+                    // Fallback to original loading method
+                    tryLoadVideo(tweet.id, (path) => {
+                        hideVideoLoading();
+                        if (path) {
+                            // Hide image placeholder, show video placeholder
+                            const imagePlaceholder = document.getElementById('imagePlaceholder');
+                            const videoPlaceholder = document.getElementById('videoPlaceholder');
+                            if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
+                            if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
+                            
+                            elements.mediaVideo.src = path;
+                            elements.mediaVideo.load();
+                            elements.mediaVideo.muted = false; // Videos play with sound
+                            elements.mediaVideo.pause(); // Don't auto-play yet
+                            
+                            // Detect video aspect ratio when metadata loads
+                            elements.mediaVideo.onloadedmetadata = function() {
+                                const aspectRatio = this.videoWidth / this.videoHeight;
+                                const mediaContainer = elements.mediaVideo.closest('.media-container');
+                                if (mediaContainer) {
+                                    mediaContainer.classList.remove('horizontal', 'vertical', 'square');
+                                    if (aspectRatio > 1.3) {
+                                        mediaContainer.classList.add('horizontal');
+                                    } else if (aspectRatio < 0.8) {
+                                        mediaContainer.classList.add('vertical');
+                                    } else {
+                                        mediaContainer.classList.add('square');
+                                    }
+                                }
+                            };
+                            
+                            // Reset to hidden state
+                            elements.sideImageDisplay.classList.add('hidden');
+                            elements.mediaOverlay.classList.add('hidden');
+                            elements.mediaOverlay.classList.remove('active', 'slide-out-right');
+                        }
+                    });
                 }
             });
         }
