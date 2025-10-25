@@ -71,7 +71,7 @@ function tryLoadImage(id, callback) {
             console.log('Timeout loading:', path, '- trying next extension');
             currentIndex++;
             tryNext();
-        }, 500);
+        }, 2500);
         
         img.onload = function() {
             clearTimeout(timeout);
@@ -4163,3 +4163,4 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
