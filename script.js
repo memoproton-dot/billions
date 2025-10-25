@@ -2,10 +2,10 @@
 function getMediaPaths(id, type) {
     const folder = './images-videos';
     if (type === 'image') {
-        const extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+        const extensions = ['png', 'gif'];
         return extensions.map(ext => `${folder}/${id}.${ext}`);
     } else if (type === 'video') {
-        const extensions = ['mp4', 'webm', 'mov', 'avi'];
+        const extensions = ['mp4'];
         return extensions.map(ext => `${folder}/${id}.${ext}`);
     }
     return [];
@@ -4208,3 +4208,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Clean up on page unload
 window.addEventListener('beforeunload', cleanupTimers);
+
