@@ -18,7 +18,7 @@ function tryLoadImage(id, callback) {
     
     // Check for multi-part images (e.g., 106(1).png and 106(2).png)
     const folder = './images-videos';
-    const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+    const extensions = ['png', 'gif'];
     let multiPartIndex = 0;
     
     function tryMultiPart() {
@@ -4208,4 +4208,5 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Clean up on page unload
 window.addEventListener('beforeunload', cleanupTimers);
+
 
