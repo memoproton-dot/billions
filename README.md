@@ -52,7 +52,7 @@ billions-timeline/
 
 ## Credits
 
-Made with ❤️ by gigaboson
+Made with ❤️ by https://x.com/gigaboson
 
 ## License
 
