@@ -26,7 +26,7 @@
         </div>
         
         <div class="start-content">
-            <h1 class="main-title">BILLIONS NETWORK</h1>
+            <h1 class="main-title">BILLIONS</h1>
             <p class="subtitle">The History of Billions · From Discord to Now</p>
             <div class="divider"></div>
             <button id="startButton" class="start-btn">
@@ -282,6 +282,12 @@
         <!-- Side Image Display -->
         <div id="sideImageDisplay" class="side-image-display hidden">
             <div id="sideImageContent" class="side-image-content">
+                <!-- Loading Placeholder -->
+                <div id="imageLoadingPlaceholder" class="media-loading-placeholder">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading image...</div>
+                </div>
+                
                 <img id="sideImage" src="" alt="Tweet Image" style="width: 100%; height: 100%; object-fit: contain;">
                 <img id="sideImage2" src="" alt="Tweet Image Part 2" class="hidden" style="width: 100%; height: auto; object-fit: contain; margin-top: 10px;">
             </div>
@@ -289,6 +295,12 @@
 
         <!-- Media Overlay -->
         <div id="mediaOverlay" class="media-overlay hidden">
+            <!-- Video Loading Overlay -->
+            <div id="videoLoadingOverlay" class="video-loading-overlay">
+                <div class="video-loading-icon"></div>
+                <div class="video-loading-text">Loading video...</div>
+            </div>
+            
             <button id="playPauseBtn" class="play-pause-btn" style="position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0,0,0,0.5); border: none; color: white; width: 60px; height: 60px; border-radius: 50%; cursor: pointer; display: none; align-items: center; justify-content: center;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                     <polygon points="5,3 19,12 5,21"></polygon>
