@@ -2197,6 +2197,23 @@ body {
     text-shadow: 0 0 40px rgba(251, 191, 36, 0.4);
 }
 
+.final-credits {
+    margin-top: 4rem;
+    font-size: 1rem;
+    color: rgba(203, 213, 225, 0.7);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.final-credits:hover {
+    opacity: 1;
+    color: rgba(203, 213, 225, 1);
+    transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
     .final-content {
         padding: 1.5rem;
@@ -2218,9 +2235,14 @@ body {
     .final-billions-logo {
         font-size: 3rem;
     }
+    
+    .final-credits {
+        margin-top: 3rem;
+        font-size: 0.9rem;
+    }
 }
 
-/* Credits Styling */
+/* Homepage Credits Styling */
 .credits {
     position: absolute;
     bottom: -25px;
@@ -2241,31 +2263,9 @@ body {
     color: rgba(255, 255, 255, 0.9);
 }
 
-.final-credits {
-    margin-top: 4rem;
-    font-size: 1rem;
-    color: rgba(203, 213, 225, 0.7);
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    opacity: 0.8;
-    transition: all 0.3s ease;
-}
-
-.final-credits:hover {
-    opacity: 1;
-    color: rgba(203, 213, 225, 1);
-    transform: translateY(-2px);
-}
-
 @media (max-width: 768px) {
     .credits {
         bottom: -25px;
         font-size: 0.65rem;
-    }
-    
-    .final-credits {
-        margin-top: 3rem;
-        font-size: 0.9rem;
     }
 }
