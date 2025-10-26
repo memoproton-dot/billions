@@ -2694,7 +2694,7 @@ const timelineData = [
         verified: true,
         text: "New promo code: MULTIPLIER24H\n\nFirst 20,000 humans. 👥\n\nClaim code here: signup.billions.network",
         eventSummary: "Promo Code - MULTIPLIER24H for first 20K",
-        hasImage: true,
+        hasImage: false,
         hasVideo: false,
         hasQuote: true,
         quoteAuthor: "Billions",
@@ -5534,4 +5534,5 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
 
