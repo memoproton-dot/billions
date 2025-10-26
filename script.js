@@ -2141,7 +2141,7 @@ const timelineData = [
         verified: true,
         text: "New promo code: MULTIPLIER24H\n\nFirst 20,000 humans. 👥\n\nClaim code here: signup.billions.network",
         eventSummary: "Promo Code - MULTIPLIER24H for first 20K",
-        hasImage: true,
+        hasImage: false,
         hasVideo: false,
         hasQuote: true,
         quoteAuthor: "Billions",
@@ -2161,7 +2161,7 @@ const timelineData = [
         verified: true,
         text: "Our mission is to save the internet in the age of AI\n\nBuilding the foundation for humans + AI agents to prove they're real, unique & accountable, is the first step to get there\n\nAppreciate @0xMarcB (CEO of @0xPolygon) recognising the work behind @billions_ntwk",
         eventSummary: "Mission Statement - Polygon CEO recognition",
-        hasImage: true,
+        hasImage: false,
         hasVideo: false,
         hasQuote: true,
         quoteAuthor: "Luc",
@@ -2329,7 +2329,7 @@ const timelineData = [
         verified: true,
         text: "Billions team is heading to Korean Blockchain Week 🇰🇷\n\nCatch us at Open AGI Summit on September 23rd!\n\nLet's build the first human + AI network together 👇",
         eventSummary: "Korean Blockchain Week - Open AGI Summit",
-        hasImage: true,
+        hasImage: false,
         hasVideo: false,
         hasQuote: true,
         quoteAuthor: "Open AGI Summit",
@@ -2589,7 +2589,7 @@ const timelineData = [
         verified: true,
         text: "This Wednesday (Sep 24)\n\nAt #KBW 🇰🇷 our cofounder Evin @provenauthority will be speaking at \"The AI Creators Summit\"\n\nAlongside our friends at @campnetworkxyz and fellow builders pushing the space forward!\n\nDetails 👇",
         eventSummary: "AI Creators Summit - KBW speaking engagement",
-        hasImage: false,
+        hasImage: true,
         hasVideo: false,
         hasQuote: true,
         quoteAuthor: "Camp Network",
@@ -4158,3 +4158,4 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
