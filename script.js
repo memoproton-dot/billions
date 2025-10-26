@@ -4873,11 +4873,31 @@ function updateMediaDisplay() {
                         elements.mediaOverlay.classList.add('active');
                     });
                     
-                    setTimeout(() => {
-                        elements.mediaVideo.play().catch(e => console.log('Video play error:', e));
+                    // Wait for canplay before playing
+                    elements.mediaVideo.oncanplay = function() {
+                        elements.mediaVideo.play().catch(e => {
+                            console.log('Video play error after canplay:', e);
+                            if (e.name === 'NotSupportedError') {
+                                console.log('Video not supported, showing placeholder');
+                                elements.sideImage.src = 'images-videos/placeholder.jpg';
+                                elements.sideImage.style.height = '100%';
+                                elements.sideImage2.classList.add('hidden');
+                                const sideImageContent = document.getElementById('sideImageContent');
+                                if (sideImageContent) {
+                                    sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                    sideImageContent.classList.add('square');
+                                }
+                                elements.sideImageDisplay.classList.remove('hidden');
+                                requestAnimationFrame(() => {
+                                    elements.sideImageDisplay.classList.add('active');
+                                });
+                                elements.mediaOverlay.classList.add('hidden');
+                                elements.mediaOverlay.classList.remove('active');
+                            }
+                        });
                         state.videoPaused = false;
                         updateBackgroundMusicVolume();
-                    }, 750);
+                    };
                 };
                 
                 elements.mediaVideo.onerror = function() {
@@ -4907,11 +4927,30 @@ function updateMediaDisplay() {
                                     elements.mediaOverlay.classList.add('active');
                                 });
                                 
-                                setTimeout(() => {
-                                    elements.mediaVideo.play().catch(e => console.log('Video play error:', e));
+                                elements.mediaVideo.oncanplay = function() {
+                                    elements.mediaVideo.play().catch(e => {
+                                        console.log('Video play error after canplay (retry):', e);
+                                        if (e.name === 'NotSupportedError') {
+                                            console.log('Video not supported on retry, showing placeholder');
+                                            elements.sideImage.src = 'images-videos/placeholder.jpg';
+                                            elements.sideImage.style.height = '100%';
+                                            elements.sideImage2.classList.add('hidden');
+                                            const sideImageContent = document.getElementById('sideImageContent');
+                                            if (sideImageContent) {
+                                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                                sideImageContent.classList.add('square');
+                                            }
+                                            elements.sideImageDisplay.classList.remove('hidden');
+                                            requestAnimationFrame(() => {
+                                                elements.sideImageDisplay.classList.add('active');
+                                            });
+                                            elements.mediaOverlay.classList.add('hidden');
+                                            elements.mediaOverlay.classList.remove('active');
+                                        }
+                                    });
                                     state.videoPaused = false;
                                     updateBackgroundMusicVolume();
-                                }, 750);
+                                };
                             };
                             
                             elements.mediaVideo.onerror = function() {
@@ -4975,11 +5014,30 @@ function updateMediaDisplay() {
                                 elements.mediaOverlay.classList.add('active');
                             });
                             
-                            setTimeout(() => {
-                                elements.mediaVideo.play().catch(e => console.log('Video play error:', e));
+                            elements.mediaVideo.oncanplay = function() {
+                                elements.mediaVideo.play().catch(e => {
+                                    console.log('Video play error after canplay (no path retry):', e);
+                                    if (e.name === 'NotSupportedError') {
+                                        console.log('Video not supported on no path retry, showing placeholder');
+                                        elements.sideImage.src = 'images-videos/placeholder.jpg';
+                                        elements.sideImage.style.height = '100%';
+                                        elements.sideImage2.classList.add('hidden');
+                                        const sideImageContent = document.getElementById('sideImageContent');
+                                        if (sideImageContent) {
+                                            sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                            sideImageContent.classList.add('square');
+                                        }
+                                        elements.sideImageDisplay.classList.remove('hidden');
+                                        requestAnimationFrame(() => {
+                                            elements.sideImageDisplay.classList.add('active');
+                                        });
+                                        elements.mediaOverlay.classList.add('hidden');
+                                        elements.mediaOverlay.classList.remove('active');
+                                    }
+                                });
                                 state.videoPaused = false;
                                 updateBackgroundMusicVolume();
-                            }, 750);
+                            };
                         };
                         
                         elements.mediaVideo.onerror = function() {
