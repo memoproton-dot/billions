@@ -2,10 +2,10 @@
 function getMediaPaths(id, type) {
     const folder = 'images-videos';
     if (type === 'image') {
-        const extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+        const extensions = ['png', 'gif'];
         return extensions.map(ext => `${folder}/${id}.${ext}`);
     } else if (type === 'video') {
-        const extensions = ['mp4', 'webm', 'mov', 'avi'];
+        const extensions = ['mp4'];
         return extensions.map(ext => `${folder}/${id}.${ext}`);
     }
     return [];
@@ -18,7 +18,7 @@ function tryLoadImage(id, callback) {
     
     // Check for multi-part images (e.g., 106(1).png and 106(2).png)
     const folder = 'images-videos';
-    const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+    const extensions = ['png', 'gif'];
     let multiPartIndex = 0;
     
     function tryMultiPart() {
@@ -155,10 +155,18 @@ class MediaPreloader {
         for (let i = immediateStart; i < immediateEnd; i++) {
             const tweet = timelineData[i];
             
-            if (tweet.hasImage && !this.cache.has(`img_${tweet.id}`)) {
+            if (tweet.hasMultipleMedia && tweet.mediaList) {
+                tweet.mediaList.forEach(media => {
+                    if (media.type === 'image' && !this.cache.has(`img_${media.id}`)) {
+                        immediatePromises.push(this.preloadImage(media.id));
+                    }
+                    if (media.type === 'video' && !this.cache.has(`vid_${media.id}`)) {
+                        immediatePromises.push(this.preloadVideo(media.id));
+                    }
+                });
+            } else if (tweet.hasImage && !this.cache.has(`img_${tweet.id}`)) {
                 immediatePromises.push(this.preloadImage(tweet.id));
-            }
-            if (tweet.hasVideo && !this.cache.has(`vid_${tweet.id}`)) {
+            } else if (tweet.hasVideo && !this.cache.has(`vid_${tweet.id}`)) {
                 immediatePromises.push(this.preloadVideo(tweet.id));
             }
         }
@@ -179,10 +187,18 @@ class MediaPreloader {
         for (let i = startIndex; i < endIndex; i++) {
             const tweet = timelineData[i];
             
-            if (tweet.hasImage && !this.cache.has(`img_${tweet.id}`)) {
+            if (tweet.hasMultipleMedia && tweet.mediaList) {
+                tweet.mediaList.forEach(media => {
+                    if (media.type === 'image' && !this.cache.has(`img_${media.id}`)) {
+                        preloadPromises.push(this.preloadImage(media.id));
+                    }
+                    if (media.type === 'video' && !this.cache.has(`vid_${media.id}`)) {
+                        preloadPromises.push(this.preloadVideo(media.id));
+                    }
+                });
+            } else if (tweet.hasImage && !this.cache.has(`img_${tweet.id}`)) {
                 preloadPromises.push(this.preloadImage(tweet.id));
-            }
-            if (tweet.hasVideo && !this.cache.has(`vid_${tweet.id}`)) {
+            } else if (tweet.hasVideo && !this.cache.has(`vid_${tweet.id}`)) {
                 preloadPromises.push(this.preloadVideo(tweet.id));
             }
         }
@@ -213,7 +229,7 @@ class MediaPreloader {
             
             // Check for multi-part images first
             const folder = 'images-videos';
-            const extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+            const extensions = ['png', 'gif'];
             let multiPartIndex = 0;
             
             function tryMultiPart() {
@@ -1911,7 +1927,7 @@ const timelineData = [
         text: "🛠️ Scheduled Maintenance – Billions Test Network\n\nThis Monday, July 21 – 10:00 CET, we're upgrading the test network (⏳ ~3h).\n\nDuring that time:\n– You won't be able to get or verify credentials\n– Wallet features may be down\n\nPlan ahead. It's all part of making Billions better 💪",
         eventSummary: "Test Network Maintenance - Scheduled upgrade",
         hasImage: false,
-        hasVideo: true,
+        hasVideo: false,
         likes: "649",
         retweets: "89",
         replies: "139"
@@ -2825,8 +2841,8 @@ const timelineData = [
         verified: true,
         text: "Hey Web3 builders 👋\n\nTraditional KYC can kill onboarding.\n\nThat's why Billions is pioneering Progressive Identity Verification, a smarter way to verify users are real without hurting UX.",
         eventSummary: "Progressive KYC - Identity verification innovation",
-        hasImage: true,
-        hasVideo: false,
+        hasImage: false,
+        hasVideo: true,
         likes: "1.9K",
         retweets: "582",
         replies: "478"
@@ -3235,8 +3251,8 @@ const timelineData = [
         verified: true,
         text: "👥 Supermasks x @KaitoAI 🌊\n\nOur 2nd NFT collection drops Oct 6\n\nOne of the main utilities? Kaito leaderboard boost!\n\nAnd the Kaito community is getting rewarded with NFTs:\n– Top 500 Billions yappers (30d/90d)\n– Top 100 Yapybaras NFT holders\n– 100 random Yapybaras NFT holders",
         eventSummary: "Kaito Partnership - Supermasks utility announcement",
-        hasImage: false,
-        hasVideo: true,
+        hasImage: true,
+        hasVideo: false,
         likes: "1.4K",
         retweets: "459",
         replies: "517"
@@ -3738,6 +3754,44 @@ const timelineData = [
         likes: "298",
         retweets: "48",
         replies: "146"
+    },
+
+    {
+        id: 194,
+        date: "Oct 25, 2025",
+        month: "October",
+        author: "Billions",
+        handle: "@billions_ntwk",
+        verified: true,
+        text: "We love human creativity — and we love spreading the word.\nSo please enjoy this week’s Billions Yappers Round👇",
+        eventSummary: "Another Yapeers round",
+        hasImage: true,
+        hasVideo: false,
+        likes: "710",
+        retweets: "141",
+        replies: "222"
+    },
+
+    {
+        id: 195,
+        date: "Oct 25, 2025",
+        month: "October",
+        author: "Billions",
+        handle: "@billions_ntwk",
+        verified: true,
+        text: "Who is our CEO Evin McMullen @provenauthority?\nLet’s find out 👇",
+        eventSummary: "CEO talk - Evin McMullen",
+        hasImage: false,
+        hasVideo: true,
+        hasMultipleMedia: true,
+        mediaList: [
+            { type: 'video', id: '195' },
+            { type: 'video', id: '195(1)' },
+            { type: 'video', id: '195(2)' }
+        ],
+        likes: "123",
+        retweets: "24",
+        replies: "65"
     }
 ];
 
@@ -3751,7 +3805,8 @@ let state = {
     slideOut: false,
     autoMode: false,
     isMuted: false,
-    videoPaused: false
+    videoPaused: false,
+    currentMediaIndex: 0
 };
 
 // DOM Elements
@@ -3807,7 +3862,9 @@ function init() {
         articleEmbed: document.getElementById('articleEmbed'),
         articleImage: document.getElementById('articleImage'),
         articleTitle: document.getElementById('articleTitle'),
-        articleDescription: document.getElementById('articleDescription')
+        articleDescription: document.getElementById('articleDescription'),
+        prevMediaButton: null, // Will be created dynamically
+        nextMediaButton: null // Will be created dynamically
     };
     
     // Event listeners
@@ -3948,8 +4005,315 @@ function updateUI() {
         elements.articleEmbed.classList.add('hidden');
     }
     
+    // Handle multiple media
+    if (tweet.hasMultipleMedia && tweet.mediaList) {
+        // Create buttons if not exist
+        if (!elements.prevMediaButton) {
+            elements.prevMediaButton = document.createElement('button');
+            elements.prevMediaButton.id = 'prevMediaButton';
+            elements.prevMediaButton.innerHTML = '<i class="fas fa-arrow-left"></i> Back';
+            elements.prevMediaButton.style.position = 'absolute';
+            elements.prevMediaButton.style.bottom = '20px';
+            elements.prevMediaButton.style.left = '20px';
+            elements.prevMediaButton.style.background = 'rgba(0,0,0,0.7)';
+            elements.prevMediaButton.style.color = 'white';
+            elements.prevMediaButton.style.border = 'none';
+            elements.prevMediaButton.style.padding = '10px 15px';
+            elements.prevMediaButton.style.borderRadius = '5px';
+            elements.prevMediaButton.style.cursor = 'pointer';
+            elements.prevMediaButton.style.zIndex = '1000';
+            elements.prevMediaButton.addEventListener('click', prevMedia);
+            elements.mediaOverlay.appendChild(elements.prevMediaButton);
+        }
+        if (!elements.nextMediaButton) {
+            elements.nextMediaButton = document.createElement('button');
+            elements.nextMediaButton.id = 'nextMediaButton';
+            elements.nextMediaButton.innerHTML = 'Next <i class="fas fa-arrow-right"></i>';
+            elements.nextMediaButton.style.position = 'absolute';
+            elements.nextMediaButton.style.bottom = '20px';
+            elements.nextMediaButton.style.right = '20px';
+            elements.nextMediaButton.style.background = 'rgba(0,0,0,0.7)';
+            elements.nextMediaButton.style.color = 'white';
+            elements.nextMediaButton.style.border = 'none';
+            elements.nextMediaButton.style.padding = '10px 15px';
+            elements.nextMediaButton.style.borderRadius = '5px';
+            elements.nextMediaButton.style.cursor = 'pointer';
+            elements.nextMediaButton.style.zIndex = '1000';
+            elements.nextMediaButton.addEventListener('click', nextMedia);
+            elements.mediaOverlay.appendChild(elements.nextMediaButton);
+        }
+        elements.prevMediaButton.style.display = 'block';
+        elements.nextMediaButton.style.display = 'block';
+        // Load first media as before
+    } else {
+        // Hide buttons if exist
+        if (elements.prevMediaButton) {
+            elements.prevMediaButton.style.display = 'none';
+        }
+        if (elements.nextMediaButton) {
+            elements.nextMediaButton.style.display = 'none';
+        }
+    }
+    
     // Pre-load media but keep hidden until typing completes
-    if (tweet.hasImage) {
+    if (tweet.hasMultipleMedia) {
+        const firstMedia = tweet.mediaList[0];
+        if (firstMedia.type === 'image') {
+            // Hide second image by default
+            elements.sideImage2.classList.add('hidden');
+            
+            // Show loading placeholder
+            showImageLoading();
+            
+            // Try to get cached media first
+            const cachedImage = mediaPreloader.getCachedImage(firstMedia.id);
+            if (cachedImage) {
+                // Use cached image immediately
+                hideImageLoading();
+                if (cachedImage.type === 'multi') {
+                    elements.sideImage.src = cachedImage.paths[0];
+                    elements.sideImage2.src = cachedImage.paths[1];
+                    elements.sideImage2.classList.remove('hidden');
+                    elements.sideImage.style.height = 'auto';
+                    
+                    const sideImageContent = document.getElementById('sideImageContent');
+                    if (sideImageContent) {
+                        sideImageContent.classList.remove('horizontal', 'vertical', 'square');
+                        sideImageContent.classList.add('multi-part');
+                    }
+                } else {
+                    elements.sideImage.src = cachedImage.path;
+                    elements.sideImage.style.height = '100%';
+                    elements.sideImage2.classList.add('hidden');
+                    
+                    // Detect aspect ratio and apply appropriate class
+                    const aspectRatio = cachedImage.image.width / cachedImage.image.height;
+                    const sideImageContent = document.getElementById('sideImageContent');
+                    if (sideImageContent) {
+                        sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                        if (aspectRatio > 1.3) {
+                            sideImageContent.classList.add('horizontal');
+                        } else if (aspectRatio < 0.8) {
+                            sideImageContent.classList.add('vertical');
+                        } else {
+                            sideImageContent.classList.add('square');
+                        }
+                    }
+                }
+                
+                // Reset to hidden state
+                elements.sideImageDisplay.classList.add('hidden');
+                elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
+            } else {
+                // Try force loading first, then fallback to original method
+                mediaPreloader.forceLoadMedia(firstMedia.id, 'image').then((cachedResult) => {
+                    if (cachedResult && cachedResult !== 'placeholder') {
+                        hideImageLoading();
+                        // Use the force-loaded cached result
+                        if (cachedResult.type === 'multi') {
+                            elements.sideImage.src = cachedResult.paths[0];
+                            elements.sideImage2.src = cachedResult.paths[1];
+                            elements.sideImage2.classList.remove('hidden');
+                            elements.sideImage.style.height = 'auto';
+                            
+                            const sideImageContent = document.getElementById('sideImageContent');
+                            if (sideImageContent) {
+                                sideImageContent.classList.remove('horizontal', 'vertical', 'square');
+                                sideImageContent.classList.add('multi-part');
+                            }
+                        } else {
+                            elements.sideImage.src = cachedResult.path;
+                            elements.sideImage.style.height = '100%';
+                            elements.sideImage2.classList.add('hidden');
+                            
+                            // Detect aspect ratio and apply appropriate class
+                            const aspectRatio = cachedResult.image.width / cachedResult.image.height;
+                            const sideImageContent = document.getElementById('sideImageContent');
+                            if (sideImageContent) {
+                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                if (aspectRatio > 1.3) {
+                                    sideImageContent.classList.add('horizontal');
+                                } else if (aspectRatio < 0.8) {
+                                    sideImageContent.classList.add('vertical');
+                                } else {
+                                    sideImageContent.classList.add('square');
+                                }
+                            }
+                        }
+                        
+                        // Reset to hidden state
+                        elements.sideImageDisplay.classList.add('hidden');
+                        elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
+                    } else {
+                        // Fallback to original loading method
+                        tryLoadImage(firstMedia.id, (result) => {
+                            hideImageLoading();
+                            if (result !== 'placeholder') {
+                                if (result.type === 'multi') {
+                                    // Multi-part image
+                                    elements.sideImage.src = result.paths[0];
+                                    elements.sideImage2.src = result.paths[1];
+                                    elements.sideImage2.classList.remove('hidden');
+                                    elements.sideImage.style.height = 'auto';
+                                    
+                                    const sideImageContent = document.getElementById('sideImageContent');
+                                    if (sideImageContent) {
+                                        sideImageContent.classList.remove('horizontal', 'vertical', 'square');
+                                        sideImageContent.classList.add('multi-part');
+                                    }
+                                } else {
+                                    // Single image
+                                    const img = new Image();
+                                    img.onload = function() {
+                                        elements.sideImage.src = result.path;
+                                        elements.sideImage.style.height = '100%';
+                                        elements.sideImage2.classList.add('hidden');
+                                        
+                                        // Detect aspect ratio and apply appropriate class
+                                        const aspectRatio = img.width / img.height;
+                                        const sideImageContent = document.getElementById('sideImageContent');
+                                        if (sideImageContent) {
+                                            sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                            if (aspectRatio > 1.3) {
+                                                sideImageContent.classList.add('horizontal');
+                                            } else if (aspectRatio < 0.8) {
+                                                sideImageContent.classList.add('vertical');
+                                            } else {
+                                                sideImageContent.classList.add('square');
+                                            }
+                                        }
+                                    };
+                                    img.src = result.path;
+                                }
+                                
+                                // Reset to hidden state
+                                elements.sideImageDisplay.classList.add('hidden');
+                                elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
+                            }
+                        });
+                    }
+                });
+            }
+        } else if (firstMedia.type === 'video') {
+            // Show loading overlay
+            showVideoLoading();
+            
+            // Try to get cached video first
+            const cachedVideo = mediaPreloader.getCachedVideo(firstMedia.id);
+            if (cachedVideo) {
+                // Use cached video immediately
+                hideVideoLoading();
+                // Hide image placeholder, show video placeholder
+                const imagePlaceholder = document.getElementById('imagePlaceholder');
+                const videoPlaceholder = document.getElementById('videoPlaceholder');
+                if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
+                if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
+                
+                elements.mediaVideo.src = cachedVideo.path;
+                elements.mediaVideo.load();
+                elements.mediaVideo.muted = false; // Videos play with sound
+                elements.mediaVideo.pause(); // Don't auto-play yet
+                
+                // Detect video aspect ratio when metadata loads
+                elements.mediaVideo.onloadedmetadata = function() {
+                    const aspectRatio = this.videoWidth / this.videoHeight;
+                    const mediaContainer = elements.mediaVideo.closest('.media-container');
+                    if (mediaContainer) {
+                        mediaContainer.classList.remove('horizontal', 'vertical', 'square');
+                        if (aspectRatio > 1.3) {
+                            mediaContainer.classList.add('horizontal');
+                        } else if (aspectRatio < 0.8) {
+                            mediaContainer.classList.add('vertical');
+                        } else {
+                            mediaContainer.classList.add('square');
+                        }
+                    }
+                };
+                
+                // Reset to hidden state
+                elements.sideImageDisplay.classList.add('hidden');
+                elements.mediaOverlay.classList.add('hidden');
+                elements.mediaOverlay.classList.remove('active', 'slide-out-right');
+            } else {
+                // Try force loading first, then fallback to original method
+                mediaPreloader.forceLoadMedia(firstMedia.id, 'video').then((cachedResult) => {
+                    if (cachedResult) {
+                        hideVideoLoading();
+                        // Use the force-loaded cached result
+                        // Hide image placeholder, show video placeholder
+                        const imagePlaceholder = document.getElementById('imagePlaceholder');
+                        const videoPlaceholder = document.getElementById('videoPlaceholder');
+                        if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
+                        if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
+                        
+                        elements.mediaVideo.src = cachedResult.path;
+                        elements.mediaVideo.load();
+                        elements.mediaVideo.muted = false; // Videos play with sound
+                        elements.mediaVideo.pause(); // Don't auto-play yet
+                        
+                        // Detect video aspect ratio when metadata loads
+                        elements.mediaVideo.onloadedmetadata = function() {
+                            const aspectRatio = this.videoWidth / this.videoHeight;
+                            const mediaContainer = elements.mediaVideo.closest('.media-container');
+                            if (mediaContainer) {
+                                mediaContainer.classList.remove('horizontal', 'vertical', 'square');
+                                if (aspectRatio > 1.3) {
+                                    mediaContainer.classList.add('horizontal');
+                                } else if (aspectRatio < 0.8) {
+                                    mediaContainer.classList.add('vertical');
+                                } else {
+                                    mediaContainer.classList.add('square');
+                                }
+                            }
+                        };
+                        
+                        // Reset to hidden state
+                        elements.sideImageDisplay.classList.add('hidden');
+                        elements.mediaOverlay.classList.add('hidden');
+                        elements.mediaOverlay.classList.remove('active', 'slide-out-right');
+                    } else {
+                        // Fallback to original loading method
+                        tryLoadVideo(firstMedia.id, (path) => {
+                            hideVideoLoading();
+                            if (path) {
+                                // Hide image placeholder, show video placeholder
+                                const imagePlaceholder = document.getElementById('imagePlaceholder');
+                                const videoPlaceholder = document.getElementById('videoPlaceholder');
+                                if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
+                                if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
+                                
+                                elements.mediaVideo.src = path;
+                                elements.mediaVideo.load();
+                                elements.mediaVideo.muted = false; // Videos play with sound
+                                elements.mediaVideo.pause(); // Don't auto-play yet
+                                
+                                // Detect video aspect ratio when metadata loads
+                                elements.mediaVideo.onloadedmetadata = function() {
+                                    const aspectRatio = this.videoWidth / this.videoHeight;
+                                    const mediaContainer = elements.mediaVideo.closest('.media-container');
+                                    if (mediaContainer) {
+                                        mediaContainer.classList.remove('horizontal', 'vertical', 'square');
+                                        if (aspectRatio > 1.3) {
+                                            mediaContainer.classList.add('horizontal');
+                                        } else if (aspectRatio < 0.8) {
+                                            mediaContainer.classList.add('vertical');
+                                        } else {
+                                            mediaContainer.classList.add('square');
+                                        }
+                                    }
+                                };
+                                
+                                // Reset to hidden state
+                                elements.sideImageDisplay.classList.add('hidden');
+                                elements.mediaOverlay.classList.add('hidden');
+                                elements.mediaOverlay.classList.remove('active', 'slide-out-right');
+                            }
+                        });
+                    }
+                });
+            }
+        }
+    } else if (tweet.hasImage) {
         // Hide second image by default
         elements.sideImage2.classList.add('hidden');
         
@@ -4239,7 +4603,9 @@ function startWaveAnimation() {
                     // Show media with coordinated animation
                     setTimeout(() => {
                         if (!state.slideOut) {
-                            if (tweet.hasImage && elements.sideImageDisplay && elements.sideImage.src) {
+                            if (tweet.hasMultipleMedia) {
+                                // Media already loaded and shown in updateUI via updateMediaDisplay
+                            } else if (tweet.hasImage && elements.sideImageDisplay && elements.sideImage.src) {
                                 // Coordinate tweet shift and image slide-in
                                 elements.tweetCard.parentElement.classList.add('with-media');
                                 elements.sideImageDisplay.classList.remove('hidden');
@@ -4327,6 +4693,330 @@ function toggleVideoPlayback() {
         elements.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
     }
     updateBackgroundMusicVolume();
+}
+
+// Next media for multiple media tweets
+function nextMedia() {
+    const tweet = timelineData[state.currentIndex];
+    if (!tweet.hasMultipleMedia || !tweet.mediaList) return;
+    
+    // Slide out current media
+    elements.sideImageDisplay.classList.remove('active');
+    elements.mediaOverlay.classList.remove('active');
+    
+    // Stop current video if playing
+    if (elements.mediaVideo.src) {
+        elements.mediaVideo.pause();
+        elements.mediaVideo.currentTime = 0;
+        elements.mediaVideo.src = '';
+        updateBackgroundMusicVolume();
+    }
+    
+    setTimeout(() => {
+        // Hide current
+        elements.sideImageDisplay.classList.add('hidden');
+        elements.mediaOverlay.classList.add('hidden');
+        
+        // Switch to next
+        state.currentMediaIndex = (state.currentMediaIndex + 1) % tweet.mediaList.length;
+        
+        // Load and slide in new media
+        updateMediaDisplay();
+    }, 300); // Match slide-out animation duration
+}
+
+// Previous media for multiple media tweets
+function prevMedia() {
+    const tweet = timelineData[state.currentIndex];
+    if (!tweet.hasMultipleMedia || !tweet.mediaList) return;
+    
+    // Slide out current media
+    elements.sideImageDisplay.classList.remove('active');
+    elements.mediaOverlay.classList.remove('active');
+    
+    // Stop current video if playing
+    if (elements.mediaVideo.src) {
+        elements.mediaVideo.pause();
+        elements.mediaVideo.currentTime = 0;
+        elements.mediaVideo.src = '';
+        updateBackgroundMusicVolume();
+    }
+    
+    setTimeout(() => {
+        // Hide current
+        elements.sideImageDisplay.classList.add('hidden');
+        elements.mediaOverlay.classList.add('hidden');
+        
+        // Switch to previous
+        state.currentMediaIndex = (state.currentMediaIndex - 1 + tweet.mediaList.length) % tweet.mediaList.length;
+        
+        // Load and slide in new media
+        updateMediaDisplay();
+    }, 300); // Match slide-out animation duration
+}
+
+// Update media display for current media index
+function updateMediaDisplay() {
+    const tweet = timelineData[state.currentIndex];
+    if (!tweet.hasMultipleMedia || !tweet.mediaList) return;
+    
+    const currentMedia = tweet.mediaList[state.currentMediaIndex];
+    
+    // Clear previous sources to prevent showing old media
+    elements.sideImage.src = '';
+    elements.mediaVideo.src = '';
+    
+    // Hide all media first
+    elements.sideImageDisplay.classList.add('hidden');
+    elements.mediaOverlay.classList.add('hidden');
+    elements.sideImageDisplay.classList.remove('active');
+    elements.mediaOverlay.classList.remove('active');
+    
+    if (currentMedia.type === 'image') {
+        // Show image
+        tryLoadImage(currentMedia.id, (result) => {
+            if (result !== 'placeholder') {
+                elements.sideImage.src = result.path;
+                elements.sideImage.style.height = '100%';
+                elements.sideImage2.classList.add('hidden');
+                
+                // Detect aspect ratio
+                if (result.image) {
+                    const aspectRatio = result.image.width / result.image.height;
+                    const sideImageContent = document.getElementById('sideImageContent');
+                    if (sideImageContent) {
+                        sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                        if (aspectRatio > 1.3) {
+                            sideImageContent.classList.add('horizontal');
+                        } else if (aspectRatio < 0.8) {
+                            sideImageContent.classList.add('vertical');
+                        } else {
+                            sideImageContent.classList.add('square');
+                        }
+                    }
+                }
+                
+                // Slide in
+                elements.sideImageDisplay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    elements.sideImageDisplay.classList.add('active');
+                });
+            } else {
+                // Retry once
+                console.log('Image load failed for', currentMedia.id, '- retrying');
+                tryLoadImage(currentMedia.id, (result2) => {
+                    if (result2 !== 'placeholder') {
+                        elements.sideImage.src = result2.path;
+                        elements.sideImage.style.height = '100%';
+                        elements.sideImage2.classList.add('hidden');
+                        
+                        // Detect aspect ratio
+                        if (result2.image) {
+                            const aspectRatio = result2.image.width / result2.image.height;
+                            const sideImageContent = document.getElementById('sideImageContent');
+                            if (sideImageContent) {
+                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                if (aspectRatio > 1.3) {
+                                    sideImageContent.classList.add('horizontal');
+                                } else if (aspectRatio < 0.8) {
+                                    sideImageContent.classList.add('vertical');
+                                } else {
+                                    sideImageContent.classList.add('square');
+                                }
+                            }
+                        }
+                    } else {
+                        // Show placeholder on final failure
+                        elements.sideImage.src = 'images-videos/placeholder.jpg';
+                        elements.sideImage.style.height = '100%';
+                        elements.sideImage2.classList.add('hidden');
+                        const sideImageContent = document.getElementById('sideImageContent');
+                        if (sideImageContent) {
+                            sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                            sideImageContent.classList.add('square');
+                        }
+                    }
+                    
+                    // Slide in
+                    elements.sideImageDisplay.classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        elements.sideImageDisplay.classList.add('active');
+                    });
+                });
+            }
+        });
+    } else if (currentMedia.type === 'video') {
+        // Show video
+        tryLoadVideo(currentMedia.id, (path) => {
+            if (path) {
+                elements.mediaVideo.src = path;
+                elements.mediaVideo.load();
+                
+                // Detect aspect ratio when metadata loads
+                elements.mediaVideo.onloadedmetadata = function() {
+                    const aspectRatio = this.videoWidth / this.videoHeight;
+                    const mediaContainer = elements.mediaVideo.closest('.media-container');
+                    if (mediaContainer) {
+                        mediaContainer.classList.remove('horizontal', 'vertical', 'square');
+                        if (aspectRatio > 1.3) {
+                            mediaContainer.classList.add('horizontal');
+                        } else if (aspectRatio < 0.8) {
+                            mediaContainer.classList.add('vertical');
+                        } else {
+                            mediaContainer.classList.add('square');
+                        }
+                    }
+                    
+                    // Slide in after metadata
+                    elements.mediaOverlay.classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        elements.mediaOverlay.classList.add('active');
+                    });
+                    
+                    setTimeout(() => {
+                        elements.mediaVideo.play().catch(e => console.log('Video play error:', e));
+                        state.videoPaused = false;
+                        updateBackgroundMusicVolume();
+                    }, 750);
+                };
+                
+                elements.mediaVideo.onerror = function() {
+                    console.log('Video load error for', path, '- retrying');
+                    // Retry once
+                    tryLoadVideo(currentMedia.id, (path2) => {
+                        if (path2) {
+                            elements.mediaVideo.src = path2;
+                            elements.mediaVideo.load();
+                            
+                            elements.mediaVideo.onloadedmetadata = function() {
+                                const aspectRatio = this.videoWidth / this.videoHeight;
+                                const mediaContainer = elements.mediaVideo.closest('.media-container');
+                                if (mediaContainer) {
+                                    mediaContainer.classList.remove('horizontal', 'vertical', 'square');
+                                    if (aspectRatio > 1.3) {
+                                        mediaContainer.classList.add('horizontal');
+                                    } else if (aspectRatio < 0.8) {
+                                        mediaContainer.classList.add('vertical');
+                                    } else {
+                                        mediaContainer.classList.add('square');
+                                    }
+                                }
+                                
+                                elements.mediaOverlay.classList.remove('hidden');
+                                requestAnimationFrame(() => {
+                                    elements.mediaOverlay.classList.add('active');
+                                });
+                                
+                                setTimeout(() => {
+                                    elements.mediaVideo.play().catch(e => console.log('Video play error:', e));
+                                    state.videoPaused = false;
+                                    updateBackgroundMusicVolume();
+                                }, 750);
+                            };
+                            
+                            elements.mediaVideo.onerror = function() {
+                                console.log('Video load retry failed for', path2, '- showing placeholder');
+                                // Show placeholder image instead
+                                elements.sideImage.src = 'images-videos/placeholder.jpg';
+                                elements.sideImage.style.height = '100%';
+                                elements.sideImage2.classList.add('hidden');
+                                const sideImageContent = document.getElementById('sideImageContent');
+                                if (sideImageContent) {
+                                    sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                    sideImageContent.classList.add('square');
+                                }
+                                elements.sideImageDisplay.classList.remove('hidden');
+                                requestAnimationFrame(() => {
+                                    elements.sideImageDisplay.classList.add('active');
+                                });
+                            };
+                        } else {
+                            // No path on retry, show placeholder
+                            console.log('No video path on retry for', currentMedia.id, '- showing placeholder');
+                            elements.sideImage.src = 'images-videos/placeholder.jpg';
+                            elements.sideImage.style.height = '100%';
+                            elements.sideImage2.classList.add('hidden');
+                            const sideImageContent = document.getElementById('sideImageContent');
+                            if (sideImageContent) {
+                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                sideImageContent.classList.add('square');
+                            }
+                            elements.sideImageDisplay.classList.remove('hidden');
+                            requestAnimationFrame(() => {
+                                elements.sideImageDisplay.classList.add('active');
+                            });
+                        }
+                    });
+                };
+            } else {
+                // No path, retry
+                console.log('No video path for', currentMedia.id, '- retrying');
+                tryLoadVideo(currentMedia.id, (path2) => {
+                    if (path2) {
+                        elements.mediaVideo.src = path2;
+                        elements.mediaVideo.load();
+                        
+                        elements.mediaVideo.onloadedmetadata = function() {
+                            const aspectRatio = this.videoWidth / this.videoHeight;
+                            const mediaContainer = elements.mediaVideo.closest('.media-container');
+                            if (mediaContainer) {
+                                mediaContainer.classList.remove('horizontal', 'vertical', 'square');
+                                if (aspectRatio > 1.3) {
+                                    mediaContainer.classList.add('horizontal');
+                                } else if (aspectRatio < 0.8) {
+                                    mediaContainer.classList.add('vertical');
+                                } else {
+                                    mediaContainer.classList.add('square');
+                                }
+                            }
+                            
+                            elements.mediaOverlay.classList.remove('hidden');
+                            requestAnimationFrame(() => {
+                                elements.mediaOverlay.classList.add('active');
+                            });
+                            
+                            setTimeout(() => {
+                                elements.mediaVideo.play().catch(e => console.log('Video play error:', e));
+                                state.videoPaused = false;
+                                updateBackgroundMusicVolume();
+                            }, 750);
+                        };
+                        
+                        elements.mediaVideo.onerror = function() {
+                            console.log('Video load retry failed for', path2, '- showing placeholder');
+                            elements.sideImage.src = 'images-videos/placeholder.jpg';
+                            elements.sideImage.style.height = '100%';
+                            elements.sideImage2.classList.add('hidden');
+                            const sideImageContent = document.getElementById('sideImageContent');
+                            if (sideImageContent) {
+                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                sideImageContent.classList.add('square');
+                            }
+                            elements.sideImageDisplay.classList.remove('hidden');
+                            requestAnimationFrame(() => {
+                                elements.sideImageDisplay.classList.add('active');
+                            });
+                        };
+                    } else {
+                        // No path on retry, show placeholder
+                        console.log('No video path on retry for', currentMedia.id, '- showing placeholder');
+                        elements.sideImage.src = 'images-videos/placeholder.jpg';
+                        elements.sideImage.style.height = '100%';
+                        elements.sideImage2.classList.add('hidden');
+                        const sideImageContent = document.getElementById('sideImageContent');
+                        if (sideImageContent) {
+                            sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                            sideImageContent.classList.add('square');
+                        }
+                        elements.sideImageDisplay.classList.remove('hidden');
+                        requestAnimationFrame(() => {
+                            elements.sideImageDisplay.classList.add('active');
+                        });
+                    }
+                });
+            }
+        });
+    }
 }
 
 // Handle auto mode
@@ -4445,6 +5135,7 @@ function handleNext() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
+            state.currentMediaIndex = 0; // Reset media index
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -4512,6 +5203,7 @@ function handlePrevious() {
             state.slideOut = false;
             state.isAnimating = false;
             state.videoPaused = false;
+            state.currentMediaIndex = 0; // Reset media index
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
@@ -4682,6 +5374,7 @@ function jumpToTweet(index) {
         state.showMedia = false;
         state.slideOut = false;
         state.isAnimating = false;
+        state.currentMediaIndex = 0; // Reset media index
         
         elements.tweetCard.classList.remove('slide-out');
         updateUI();
@@ -4781,8 +5474,3 @@ function showFinalMessage() {
         }, 100);
     }
 }
-
-
-
-
-
