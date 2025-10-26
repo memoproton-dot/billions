@@ -128,7 +128,7 @@ class MediaPreloader {
         this.cache = new Map();
         this.preloadQueue = [];
         this.maxCacheSize = 25; // Increased cache size
-        this.preloadRange = 8; // Increased preload range (was 3)
+        this.preloadRange = 15; // Increased preload range (was 8)
         this.loadingPromises = new Map(); // Prevent duplicate loads
         this.preloadTimeout = null; // For delayed preloading
     }
@@ -5195,6 +5195,10 @@ function handleNext() {
             state.videoPaused = false;
             state.currentMediaIndex = 0; // Reset media index
             
+            // Clear media sources to prevent showing previous media
+            elements.sideImage.src = '';
+            elements.mediaVideo.src = '';
+            
             // Pause and reset video
             if (elements.mediaVideo.src) {
                 elements.mediaVideo.pause();
@@ -5262,6 +5266,10 @@ function handlePrevious() {
             state.isAnimating = false;
             state.videoPaused = false;
             state.currentMediaIndex = 0; // Reset media index
+            
+            // Clear media sources to prevent showing previous media
+            elements.sideImage.src = '';
+            elements.mediaVideo.src = '';
             
             // Pause and reset video
             if (elements.mediaVideo.src) {
