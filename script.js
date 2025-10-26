@@ -12,9 +12,11 @@ function getMediaPaths(id, type) {
 }
 
 // Try to load image with multiple extensions and multi-part support
-function tryLoadImage(id, callback) {
+function tryLoadImage(id, callback, retryCount = 0) {
     const paths = getMediaPaths(id, 'image');
     let currentIndex = 0;
+    const maxRetries = 3; // Maximum number of retry attempts
+    const baseDelay = 1000; // Base delay in milliseconds
     
     // Check for multi-part images (e.g., 106(1).png and 106(2).png)
     const folder = 'images-videos';
@@ -59,7 +61,16 @@ function tryLoadImage(id, callback) {
     
     function tryNext() {
         if (currentIndex >= paths.length) {
-            console.warn('No valid image found for tweet', id, '- showing placeholder');
+            // All paths tried, check if we should retry
+            if (retryCount < maxRetries) {
+                const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+                console.log(`All paths failed for tweet ${id}, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
+                setTimeout(() => {
+                    tryLoadImage(id, callback, retryCount + 1);
+                }, delay);
+                return;
+            }
+            console.warn('No valid image found for tweet', id, 'after', maxRetries + 1, 'attempts - showing placeholder');
             callback('placeholder');
             return;
         }
@@ -91,13 +102,24 @@ function tryLoadImage(id, callback) {
 }
 
 // Try to load video with multiple extensions
-function tryLoadVideo(id, callback) {
+function tryLoadVideo(id, callback, retryCount = 0) {
     const paths = getMediaPaths(id, 'video');
     let currentIndex = 0;
+    const maxRetries = 3; // Maximum number of retry attempts
+    const baseDelay = 1000; // Base delay in milliseconds
     
     function tryNext() {
         if (currentIndex >= paths.length) {
-            console.error('No valid video found for tweet', id);
+            // All paths tried, check if we should retry
+            if (retryCount < maxRetries) {
+                const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+                console.log(`All paths failed for video ${id}, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
+                setTimeout(() => {
+                    tryLoadVideo(id, callback, retryCount + 1);
+                }, delay);
+                return;
+            }
+            console.error('No valid video found for tweet', id, 'after', maxRetries + 1, 'attempts');
             callback(null);
             return;
         }
@@ -226,6 +248,9 @@ class MediaPreloader {
         const loadPromise = new Promise((resolve) => {
             const paths = getMediaPaths(id, 'image');
             let currentIndex = 0;
+            const maxRetries = 2; // Fewer retries for preloading
+            const baseDelay = 500; // Shorter delay for preloading
+            let retryCount = 0;
             
             // Check for multi-part images first
             const folder = 'images-videos';
@@ -264,6 +289,17 @@ class MediaPreloader {
             
             function tryNext() {
                 if (currentIndex >= paths.length) {
+                    // All paths tried, check if we should retry
+                    if (retryCount < maxRetries) {
+                        const delay = baseDelay * Math.pow(2, retryCount);
+                        console.log(`Preload failed for image ${id}, retrying in ${delay}ms`);
+                        retryCount++;
+                        setTimeout(() => {
+                            currentIndex = 0; // Reset to try all paths again
+                            tryMultiPart();
+                        }, delay);
+                        return;
+                    }
                     resolve('placeholder');
                     return;
                 }
@@ -325,9 +361,23 @@ class MediaPreloader {
         const loadPromise = new Promise((resolve) => {
             const paths = getMediaPaths(id, 'video');
             let currentIndex = 0;
+            const maxRetries = 2; // Fewer retries for preloading
+            const baseDelay = 500; // Shorter delay for preloading
+            let retryCount = 0;
             
             function tryNext() {
                 if (currentIndex >= paths.length) {
+                    // All paths tried, check if we should retry
+                    if (retryCount < maxRetries) {
+                        const delay = baseDelay * Math.pow(2, retryCount);
+                        console.log(`Preload failed for video ${id}, retrying in ${delay}ms`);
+                        retryCount++;
+                        setTimeout(() => {
+                            currentIndex = 0; // Reset to try all paths again
+                            tryNext();
+                        }, delay);
+                        return;
+                    }
                     resolve(null);
                     return;
                 }
