@@ -4494,6 +4494,57 @@ function updateUI() {
                             // Reset to hidden state
                             elements.sideImageDisplay.classList.add('hidden');
                             elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
+                        } else {
+                            // Retry once for single tweet images
+                            console.log('Image load failed for tweet', tweet.id, '- retrying');
+                            tryLoadImage(tweet.id, (result2) => {
+                                hideImageLoading();
+                                if (result2 !== 'placeholder') {
+                                    if (result2.type === 'multi') {
+                                        // Multi-part image
+                                        elements.sideImage.src = result2.paths[0];
+                                        elements.sideImage2.src = result2.paths[1];
+                                        elements.sideImage2.classList.remove('hidden');
+                                        elements.sideImage.style.height = 'auto';
+                                        
+                                        const sideImageContent = document.getElementById('sideImageContent');
+                                        if (sideImageContent) {
+                                            sideImageContent.classList.remove('horizontal', 'vertical', 'square');
+                                            sideImageContent.classList.add('multi-part');
+                                        }
+                                    } else {
+                                        // Single image
+                                        const img = new Image();
+                                        img.onload = function() {
+                                            elements.sideImage.src = result2.path;
+                                            elements.sideImage.style.height = '100%';
+                                            elements.sideImage2.classList.add('hidden');
+                                            
+                                            // Detect aspect ratio and apply appropriate class
+                                            const aspectRatio = img.width / img.height;
+                                            const sideImageContent = document.getElementById('sideImageContent');
+                                            if (sideImageContent) {
+                                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                                                if (aspectRatio > 1.3) {
+                                                    sideImageContent.classList.add('horizontal');
+                                                } else if (aspectRatio < 0.8) {
+                                                    sideImageContent.classList.add('vertical');
+                                                } else {
+                                                    sideImageContent.classList.add('square');
+                                                }
+                                            }
+                                        };
+                                        img.src = result2.path;
+                                    }
+                                } else {
+                                    // Show placeholder on final failure
+                                    console.log('Image load failed permanently for tweet', tweet.id, '- showing placeholder');
+                                }
+                                
+                                // Reset to hidden state regardless
+                                elements.sideImageDisplay.classList.add('hidden');
+                                elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
+                            });
                         }
                     });
                 }
@@ -4612,6 +4663,48 @@ function updateUI() {
                             elements.sideImageDisplay.classList.add('hidden');
                             elements.mediaOverlay.classList.add('hidden');
                             elements.mediaOverlay.classList.remove('active', 'slide-out-right');
+                        } else {
+                            // Retry once for single tweet videos
+                            console.log('Video load failed for tweet', tweet.id, '- retrying');
+                            tryLoadVideo(tweet.id, (path2) => {
+                                hideVideoLoading();
+                                if (path2) {
+                                    // Hide image placeholder, show video placeholder
+                                    const imagePlaceholder = document.getElementById('imagePlaceholder');
+                                    const videoPlaceholder = document.getElementById('videoPlaceholder');
+                                    if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
+                                    if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
+                                    
+                                    elements.mediaVideo.src = path2;
+                                    elements.mediaVideo.load();
+                                    elements.mediaVideo.muted = false; // Videos play with sound
+                                    elements.mediaVideo.pause(); // Don't auto-play yet
+                                    
+                                    // Detect video aspect ratio when metadata loads
+                                    elements.mediaVideo.onloadedmetadata = function() {
+                                        const aspectRatio = this.videoWidth / this.videoHeight;
+                                        const mediaContainer = elements.mediaVideo.closest('.media-container');
+                                        if (mediaContainer) {
+                                            mediaContainer.classList.remove('horizontal', 'vertical', 'square');
+                                            if (aspectRatio > 1.3) {
+                                                mediaContainer.classList.add('horizontal');
+                                            } else if (aspectRatio < 0.8) {
+                                                mediaContainer.classList.add('vertical');
+                                            } else {
+                                                mediaContainer.classList.add('square');
+                                            }
+                                        }
+                                    };
+                                } else {
+                                    // Show placeholder on final failure
+                                    console.log('Video load failed permanently for tweet', tweet.id, '- showing placeholder');
+                                }
+                                
+                                // Reset to hidden state regardless
+                                elements.sideImageDisplay.classList.add('hidden');
+                                elements.mediaOverlay.classList.add('hidden');
+                                elements.mediaOverlay.classList.remove('active', 'slide-out-right');
+                            });
                         }
                     });
                 }
@@ -4708,6 +4801,27 @@ function showFullMedia() {
                 requestAnimationFrame(() => {
                     elements.sideImageDisplay.classList.add('active');
                 });
+            } else {
+                // Retry once for full media view
+                console.log('Full media image load failed for tweet', tweet.id, '- retrying');
+                tryLoadImage(tweet.id, (result2) => {
+                    if (result2 !== 'placeholder') {
+                        if (result2.type === 'multi') {
+                            elements.sideImage.src = result2.paths[0];
+                            elements.sideImage2.src = result2.paths[1];
+                            elements.sideImage2.classList.remove('hidden');
+                        } else {
+                            elements.sideImage.src = result2.path;
+                            elements.sideImage2.classList.add('hidden');
+                        }
+                    } else {
+                        console.log('Full media image load failed permanently for tweet', tweet.id);
+                    }
+                    elements.sideImageDisplay.classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        elements.sideImageDisplay.classList.add('active');
+                    });
+                });
             }
         });
     }
@@ -4726,6 +4840,26 @@ function showFullMedia() {
                     state.videoPaused = false;
                     updateBackgroundMusicVolume();
                 }, 750);
+            } else {
+                // Retry once for full media view
+                console.log('Full media video load failed for tweet', tweet.id, '- retrying');
+                tryLoadVideo(tweet.id, (path2) => {
+                    if (path2) {
+                        elements.mediaVideo.src = path2;
+                        elements.mediaVideo.load();
+                        setTimeout(() => {
+                            elements.mediaVideo.play().catch(e => console.log('Video play error:', e));
+                            state.videoPaused = false;
+                            updateBackgroundMusicVolume();
+                        }, 750);
+                    } else {
+                        console.log('Full media video load failed permanently for tweet', tweet.id);
+                    }
+                    elements.mediaOverlay.classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        elements.mediaOverlay.classList.add('active');
+                    });
+                });
             }
         });
     }
