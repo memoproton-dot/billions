@@ -3433,7 +3433,7 @@ const timelineData = [
         text: "🌎 Big update! @jgonzalezferrer has been promoted to Head of Community\n\nMeet him live in a Spaces today! What do you want to know? Welcome him 🤗👏",
         eventSummary: "Javi Promoted - Head of Community announcement",
         hasImage: false,
-        hasVideo: false,
+        hasVideo: true,
         hasQuote: true,
         quoteAuthor: "Javi🌊.eth",
         quoteHandle: "@jgonzalezferrer",
@@ -5534,5 +5534,6 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
 
 
