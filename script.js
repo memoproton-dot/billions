@@ -12,11 +12,9 @@ function getMediaPaths(id, type) {
 }
 
 // Try to load image with multiple extensions and multi-part support
-function tryLoadImage(id, callback, retryCount = 0) {
+function tryLoadImage(id, callback) {
     const paths = getMediaPaths(id, 'image');
     let currentIndex = 0;
-    const maxRetries = 3; // Maximum number of retry attempts
-    const baseDelay = 1000; // Base delay in milliseconds
     
     // Check for multi-part images (e.g., 106(1).png and 106(2).png)
     const folder = 'images-videos';
@@ -61,16 +59,7 @@ function tryLoadImage(id, callback, retryCount = 0) {
     
     function tryNext() {
         if (currentIndex >= paths.length) {
-            // All paths tried, check if we should retry
-            if (retryCount < maxRetries) {
-                const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-                console.log(`All paths failed for tweet ${id}, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
-                setTimeout(() => {
-                    tryLoadImage(id, callback, retryCount + 1);
-                }, delay);
-                return;
-            }
-            console.warn('No valid image found for tweet', id, 'after', maxRetries + 1, 'attempts - showing placeholder');
+            console.warn('No valid image found for tweet', id, '- showing placeholder');
             callback('placeholder');
             return;
         }
@@ -102,24 +91,13 @@ function tryLoadImage(id, callback, retryCount = 0) {
 }
 
 // Try to load video with multiple extensions
-function tryLoadVideo(id, callback, retryCount = 0) {
+function tryLoadVideo(id, callback) {
     const paths = getMediaPaths(id, 'video');
     let currentIndex = 0;
-    const maxRetries = 3; // Maximum number of retry attempts
-    const baseDelay = 1000; // Base delay in milliseconds
     
     function tryNext() {
         if (currentIndex >= paths.length) {
-            // All paths tried, check if we should retry
-            if (retryCount < maxRetries) {
-                const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-                console.log(`All paths failed for video ${id}, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
-                setTimeout(() => {
-                    tryLoadVideo(id, callback, retryCount + 1);
-                }, delay);
-                return;
-            }
-            console.error('No valid video found for tweet', id, 'after', maxRetries + 1, 'attempts');
+            console.error('No valid video found for tweet', id);
             callback(null);
             return;
         }
@@ -142,6 +120,54 @@ function tryLoadVideo(id, callback, retryCount = 0) {
     }
     
     tryNext();
+}
+
+// Try to load image with retry logic for UI display
+function tryLoadImageWithRetry(id, callback, retryCount = 0) {
+    const maxRetries = 3;
+    const baseDelay = 1000;
+    
+    tryLoadImage(id, (result) => {
+        if (result !== 'placeholder') {
+            callback(result);
+        } else {
+            // All paths failed, check if we should retry
+            if (retryCount < maxRetries) {
+                const delay = baseDelay * Math.pow(2, retryCount);
+                console.log(`Image load failed for tweet ${id}, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
+                setTimeout(() => {
+                    tryLoadImageWithRetry(id, callback, retryCount + 1);
+                }, delay);
+            } else {
+                console.log(`Image load failed permanently for tweet ${id} after ${maxRetries + 1} attempts`);
+                callback('placeholder');
+            }
+        }
+    });
+}
+
+// Try to load video with retry logic for UI display
+function tryLoadVideoWithRetry(id, callback, retryCount = 0) {
+    const maxRetries = 3;
+    const baseDelay = 1000;
+    
+    tryLoadVideo(id, (result) => {
+        if (result) {
+            callback(result);
+        } else {
+            // All paths failed, check if we should retry
+            if (retryCount < maxRetries) {
+                const delay = baseDelay * Math.pow(2, retryCount);
+                console.log(`Video load failed for tweet ${id}, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
+                setTimeout(() => {
+                    tryLoadVideoWithRetry(id, callback, retryCount + 1);
+                }, delay);
+            } else {
+                console.log(`Video load failed permanently for tweet ${id} after ${maxRetries + 1} attempts`);
+                callback(null);
+            }
+        }
+    });
 }
 
 // Media Preloader Class for efficient caching and preloading
@@ -248,9 +274,6 @@ class MediaPreloader {
         const loadPromise = new Promise((resolve) => {
             const paths = getMediaPaths(id, 'image');
             let currentIndex = 0;
-            const maxRetries = 2; // Fewer retries for preloading
-            const baseDelay = 500; // Shorter delay for preloading
-            let retryCount = 0;
             
             // Check for multi-part images first
             const folder = 'images-videos';
@@ -289,17 +312,6 @@ class MediaPreloader {
             
             function tryNext() {
                 if (currentIndex >= paths.length) {
-                    // All paths tried, check if we should retry
-                    if (retryCount < maxRetries) {
-                        const delay = baseDelay * Math.pow(2, retryCount);
-                        console.log(`Preload failed for image ${id}, retrying in ${delay}ms`);
-                        retryCount++;
-                        setTimeout(() => {
-                            currentIndex = 0; // Reset to try all paths again
-                            tryMultiPart();
-                        }, delay);
-                        return;
-                    }
                     resolve('placeholder');
                     return;
                 }
@@ -361,23 +373,9 @@ class MediaPreloader {
         const loadPromise = new Promise((resolve) => {
             const paths = getMediaPaths(id, 'video');
             let currentIndex = 0;
-            const maxRetries = 2; // Fewer retries for preloading
-            const baseDelay = 500; // Shorter delay for preloading
-            let retryCount = 0;
             
             function tryNext() {
                 if (currentIndex >= paths.length) {
-                    // All paths tried, check if we should retry
-                    if (retryCount < maxRetries) {
-                        const delay = baseDelay * Math.pow(2, retryCount);
-                        console.log(`Preload failed for video ${id}, retrying in ${delay}ms`);
-                        retryCount++;
-                        setTimeout(() => {
-                            currentIndex = 0; // Reset to try all paths again
-                            tryNext();
-                        }, delay);
-                        return;
-                    }
                     resolve(null);
                     return;
                 }
@@ -4451,7 +4449,7 @@ function updateUI() {
                     elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
                 } else {
                     // Fallback to original loading method
-                    tryLoadImage(tweet.id, (result) => {
+                    tryLoadImageWithRetry(tweet.id, (result) => {
                         hideImageLoading();
                         if (result !== 'placeholder') {
                             if (result.type === 'multi') {
@@ -4495,56 +4493,10 @@ function updateUI() {
                             elements.sideImageDisplay.classList.add('hidden');
                             elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
                         } else {
-                            // Retry once for single tweet images
-                            console.log('Image load failed for tweet', tweet.id, '- retrying');
-                            tryLoadImage(tweet.id, (result2) => {
-                                hideImageLoading();
-                                if (result2 !== 'placeholder') {
-                                    if (result2.type === 'multi') {
-                                        // Multi-part image
-                                        elements.sideImage.src = result2.paths[0];
-                                        elements.sideImage2.src = result2.paths[1];
-                                        elements.sideImage2.classList.remove('hidden');
-                                        elements.sideImage.style.height = 'auto';
-                                        
-                                        const sideImageContent = document.getElementById('sideImageContent');
-                                        if (sideImageContent) {
-                                            sideImageContent.classList.remove('horizontal', 'vertical', 'square');
-                                            sideImageContent.classList.add('multi-part');
-                                        }
-                                    } else {
-                                        // Single image
-                                        const img = new Image();
-                                        img.onload = function() {
-                                            elements.sideImage.src = result2.path;
-                                            elements.sideImage.style.height = '100%';
-                                            elements.sideImage2.classList.add('hidden');
-                                            
-                                            // Detect aspect ratio and apply appropriate class
-                                            const aspectRatio = img.width / img.height;
-                                            const sideImageContent = document.getElementById('sideImageContent');
-                                            if (sideImageContent) {
-                                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                                                if (aspectRatio > 1.3) {
-                                                    sideImageContent.classList.add('horizontal');
-                                                } else if (aspectRatio < 0.8) {
-                                                    sideImageContent.classList.add('vertical');
-                                                } else {
-                                                    sideImageContent.classList.add('square');
-                                                }
-                                            }
-                                        };
-                                        img.src = result2.path;
-                                    }
-                                } else {
-                                    // Show placeholder on final failure
-                                    console.log('Image load failed permanently for tweet', tweet.id, '- showing placeholder');
-                                }
-                                
-                                // Reset to hidden state regardless
-                                elements.sideImageDisplay.classList.add('hidden');
-                                elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
-                            });
+                            // Show placeholder on final failure (no additional retry here since tryLoadImageWithRetry already handles it)
+                            console.log('Single tweet image failed to load for tweet', tweet.id);
+                            elements.sideImageDisplay.classList.add('hidden');
+                            elements.sideImageDisplay.classList.remove('active', 'slide-out-right');
                         }
                     });
                 }
@@ -4629,7 +4581,7 @@ function updateUI() {
                     elements.mediaOverlay.classList.remove('active', 'slide-out-right');
                 } else {
                     // Fallback to original loading method
-                    tryLoadVideo(tweet.id, (path) => {
+                    tryLoadVideoWithRetry(tweet.id, (path) => {
                         hideVideoLoading();
                         if (path) {
                             // Hide image placeholder, show video placeholder
@@ -4664,47 +4616,11 @@ function updateUI() {
                             elements.mediaOverlay.classList.add('hidden');
                             elements.mediaOverlay.classList.remove('active', 'slide-out-right');
                         } else {
-                            // Retry once for single tweet videos
-                            console.log('Video load failed for tweet', tweet.id, '- retrying');
-                            tryLoadVideo(tweet.id, (path2) => {
-                                hideVideoLoading();
-                                if (path2) {
-                                    // Hide image placeholder, show video placeholder
-                                    const imagePlaceholder = document.getElementById('imagePlaceholder');
-                                    const videoPlaceholder = document.getElementById('videoPlaceholder');
-                                    if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
-                                    if (videoPlaceholder) videoPlaceholder.classList.remove('hidden');
-                                    
-                                    elements.mediaVideo.src = path2;
-                                    elements.mediaVideo.load();
-                                    elements.mediaVideo.muted = false; // Videos play with sound
-                                    elements.mediaVideo.pause(); // Don't auto-play yet
-                                    
-                                    // Detect video aspect ratio when metadata loads
-                                    elements.mediaVideo.onloadedmetadata = function() {
-                                        const aspectRatio = this.videoWidth / this.videoHeight;
-                                        const mediaContainer = elements.mediaVideo.closest('.media-container');
-                                        if (mediaContainer) {
-                                            mediaContainer.classList.remove('horizontal', 'vertical', 'square');
-                                            if (aspectRatio > 1.3) {
-                                                mediaContainer.classList.add('horizontal');
-                                            } else if (aspectRatio < 0.8) {
-                                                mediaContainer.classList.add('vertical');
-                                            } else {
-                                                mediaContainer.classList.add('square');
-                                            }
-                                        }
-                                    };
-                                } else {
-                                    // Show placeholder on final failure
-                                    console.log('Video load failed permanently for tweet', tweet.id, '- showing placeholder');
-                                }
-                                
-                                // Reset to hidden state regardless
-                                elements.sideImageDisplay.classList.add('hidden');
-                                elements.mediaOverlay.classList.add('hidden');
-                                elements.mediaOverlay.classList.remove('active', 'slide-out-right');
-                            });
+                            // Show placeholder on final failure
+                            console.log('Single tweet video failed to load for tweet', tweet.id);
+                            elements.sideImageDisplay.classList.add('hidden');
+                            elements.mediaOverlay.classList.add('hidden');
+                            elements.mediaOverlay.classList.remove('active', 'slide-out-right');
                         }
                     });
                 }
@@ -4787,7 +4703,7 @@ function showFullMedia() {
     state.showMedia = true;
     
     if (tweet.hasImage) {
-        tryLoadImage(tweet.id, (result) => {
+        tryLoadImageWithRetry(tweet.id, (result) => {
             if (result !== 'placeholder') {
                 if (result.type === 'multi') {
                     elements.sideImage.src = result.paths[0];
@@ -4802,32 +4718,18 @@ function showFullMedia() {
                     elements.sideImageDisplay.classList.add('active');
                 });
             } else {
-                // Retry once for full media view
-                console.log('Full media image load failed for tweet', tweet.id, '- retrying');
-                tryLoadImage(tweet.id, (result2) => {
-                    if (result2 !== 'placeholder') {
-                        if (result2.type === 'multi') {
-                            elements.sideImage.src = result2.paths[0];
-                            elements.sideImage2.src = result2.paths[1];
-                            elements.sideImage2.classList.remove('hidden');
-                        } else {
-                            elements.sideImage.src = result2.path;
-                            elements.sideImage2.classList.add('hidden');
-                        }
-                    } else {
-                        console.log('Full media image load failed permanently for tweet', tweet.id);
-                    }
-                    elements.sideImageDisplay.classList.remove('hidden');
-                    requestAnimationFrame(() => {
-                        elements.sideImageDisplay.classList.add('active');
-                    });
+                // Show placeholder on final failure
+                console.log('Full media image failed to load for tweet', tweet.id);
+                elements.sideImageDisplay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    elements.sideImageDisplay.classList.add('active');
                 });
             }
         });
     }
     
     if (tweet.hasVideo) {
-        tryLoadVideo(tweet.id, (path) => {
+        tryLoadVideoWithRetry(tweet.id, (path) => {
             if (path) {
                 elements.mediaVideo.src = path;
                 elements.mediaVideo.load();
@@ -4841,24 +4743,11 @@ function showFullMedia() {
                     updateBackgroundMusicVolume();
                 }, 750);
             } else {
-                // Retry once for full media view
-                console.log('Full media video load failed for tweet', tweet.id, '- retrying');
-                tryLoadVideo(tweet.id, (path2) => {
-                    if (path2) {
-                        elements.mediaVideo.src = path2;
-                        elements.mediaVideo.load();
-                        setTimeout(() => {
-                            elements.mediaVideo.play().catch(e => console.log('Video play error:', e));
-                            state.videoPaused = false;
-                            updateBackgroundMusicVolume();
-                        }, 750);
-                    } else {
-                        console.log('Full media video load failed permanently for tweet', tweet.id);
-                    }
-                    elements.mediaOverlay.classList.remove('hidden');
-                    requestAnimationFrame(() => {
-                        elements.mediaOverlay.classList.add('active');
-                    });
+                // Show placeholder on final failure
+                console.log('Full media video failed to load for tweet', tweet.id);
+                elements.mediaOverlay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    elements.mediaOverlay.classList.add('active');
                 });
             }
         });
@@ -4958,7 +4847,7 @@ function updateMediaDisplay() {
     
     if (currentMedia.type === 'image') {
         // Show image
-        tryLoadImage(currentMedia.id, (result) => {
+        tryLoadImageWithRetry(currentMedia.id, (result) => {
             if (result !== 'placeholder') {
                 elements.sideImage.src = result.path;
                 elements.sideImage.style.height = '100%';
@@ -4986,52 +4875,27 @@ function updateMediaDisplay() {
                     elements.sideImageDisplay.classList.add('active');
                 });
             } else {
-                // Retry once
-                console.log('Image load failed for', currentMedia.id, '- retrying');
-                tryLoadImage(currentMedia.id, (result2) => {
-                    if (result2 !== 'placeholder') {
-                        elements.sideImage.src = result2.path;
-                        elements.sideImage.style.height = '100%';
-                        elements.sideImage2.classList.add('hidden');
-                        
-                        // Detect aspect ratio
-                        if (result2.image) {
-                            const aspectRatio = result2.image.width / result2.image.height;
-                            const sideImageContent = document.getElementById('sideImageContent');
-                            if (sideImageContent) {
-                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                                if (aspectRatio > 1.3) {
-                                    sideImageContent.classList.add('horizontal');
-                                } else if (aspectRatio < 0.8) {
-                                    sideImageContent.classList.add('vertical');
-                                } else {
-                                    sideImageContent.classList.add('square');
-                                }
-                            }
-                        }
-                    } else {
-                        // Show placeholder on final failure
-                        elements.sideImage.src = 'images-videos/placeholder.jpg';
-                        elements.sideImage.style.height = '100%';
-                        elements.sideImage2.classList.add('hidden');
-                        const sideImageContent = document.getElementById('sideImageContent');
-                        if (sideImageContent) {
-                            sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                            sideImageContent.classList.add('square');
-                        }
-                    }
-                    
-                    // Slide in
-                    elements.sideImageDisplay.classList.remove('hidden');
-                    requestAnimationFrame(() => {
-                        elements.sideImageDisplay.classList.add('active');
-                    });
+                // Show placeholder on final failure
+                console.log('Multiple media image failed to load for media', currentMedia.id, 'in tweet', tweet.id);
+                elements.sideImage.src = 'images-videos/placeholder.jpg';
+                elements.sideImage.style.height = '100%';
+                elements.sideImage2.classList.add('hidden');
+                const sideImageContent = document.getElementById('sideImageContent');
+                if (sideImageContent) {
+                    sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                    sideImageContent.classList.add('square');
+                }
+                
+                // Slide in
+                elements.sideImageDisplay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    elements.sideImageDisplay.classList.add('active');
                 });
             }
         });
     } else if (currentMedia.type === 'video') {
         // Show video
-        tryLoadVideo(currentMedia.id, (path) => {
+        tryLoadVideoWithRetry(currentMedia.id, (path) => {
             if (path) {
                 elements.mediaVideo.src = path;
                 elements.mediaVideo.load();
@@ -5085,176 +4949,35 @@ function updateMediaDisplay() {
                 };
                 
                 elements.mediaVideo.onerror = function() {
-                    console.log('Video load error for', path, '- retrying');
-                    // Retry once
-                    tryLoadVideo(currentMedia.id, (path2) => {
-                        if (path2) {
-                            elements.mediaVideo.src = path2;
-                            elements.mediaVideo.load();
-                            
-                            elements.mediaVideo.onloadedmetadata = function() {
-                                const aspectRatio = this.videoWidth / this.videoHeight;
-                                const mediaContainer = elements.mediaVideo.closest('.media-container');
-                                if (mediaContainer) {
-                                    mediaContainer.classList.remove('horizontal', 'vertical', 'square');
-                                    if (aspectRatio > 1.3) {
-                                        mediaContainer.classList.add('horizontal');
-                                    } else if (aspectRatio < 0.8) {
-                                        mediaContainer.classList.add('vertical');
-                                    } else {
-                                        mediaContainer.classList.add('square');
-                                    }
-                                }
-                                
-                                elements.mediaOverlay.classList.remove('hidden');
-                                requestAnimationFrame(() => {
-                                    elements.mediaOverlay.classList.add('active');
-                                });
-                                
-                                elements.mediaVideo.oncanplay = function() {
-                                    elements.mediaVideo.play().catch(e => {
-                                        console.log('Video play error after canplay (retry):', e);
-                                        if (e.name === 'NotSupportedError') {
-                                            console.log('Video not supported on retry, showing placeholder');
-                                            elements.sideImage.src = 'images-videos/placeholder.jpg';
-                                            elements.sideImage.style.height = '100%';
-                                            elements.sideImage2.classList.add('hidden');
-                                            const sideImageContent = document.getElementById('sideImageContent');
-                                            if (sideImageContent) {
-                                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                                                sideImageContent.classList.add('square');
-                                            }
-                                            elements.sideImageDisplay.classList.remove('hidden');
-                                            requestAnimationFrame(() => {
-                                                elements.sideImageDisplay.classList.add('active');
-                                            });
-                                            elements.mediaOverlay.classList.add('hidden');
-                                            elements.mediaOverlay.classList.remove('active');
-                                        }
-                                    });
-                                    state.videoPaused = false;
-                                    updateBackgroundMusicVolume();
-                                };
-                            };
-                            
-                            elements.mediaVideo.onerror = function() {
-                                console.log('Video load retry failed for', path2, '- showing placeholder');
-                                // Show placeholder image instead
-                                elements.sideImage.src = 'images-videos/placeholder.jpg';
-                                elements.sideImage.style.height = '100%';
-                                elements.sideImage2.classList.add('hidden');
-                                const sideImageContent = document.getElementById('sideImageContent');
-                                if (sideImageContent) {
-                                    sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                                    sideImageContent.classList.add('square');
-                                }
-                                elements.sideImageDisplay.classList.remove('hidden');
-                                requestAnimationFrame(() => {
-                                    elements.sideImageDisplay.classList.add('active');
-                                });
-                            };
-                        } else {
-                            // No path on retry, show placeholder
-                            console.log('No video path on retry for', currentMedia.id, '- showing placeholder');
-                            elements.sideImage.src = 'images-videos/placeholder.jpg';
-                            elements.sideImage.style.height = '100%';
-                            elements.sideImage2.classList.add('hidden');
-                            const sideImageContent = document.getElementById('sideImageContent');
-                            if (sideImageContent) {
-                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                                sideImageContent.classList.add('square');
-                            }
-                            elements.sideImageDisplay.classList.remove('hidden');
-                            requestAnimationFrame(() => {
-                                elements.sideImageDisplay.classList.add('active');
-                            });
-                        }
+                    console.log('Video load error for', path, '- showing placeholder');
+                    // Show placeholder image instead
+                    elements.sideImage.src = 'images-videos/placeholder.jpg';
+                    elements.sideImage.style.height = '100%';
+                    elements.sideImage2.classList.add('hidden');
+                    const sideImageContent = document.getElementById('sideImageContent');
+                    if (sideImageContent) {
+                        sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                        sideImageContent.classList.add('square');
+                    }
+                    elements.sideImageDisplay.classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        elements.sideImageDisplay.classList.add('active');
                     });
                 };
             } else {
-                // No path, retry
-                console.log('No video path for', currentMedia.id, '- retrying');
-                tryLoadVideo(currentMedia.id, (path2) => {
-                    if (path2) {
-                        elements.mediaVideo.src = path2;
-                        elements.mediaVideo.load();
-                        
-                        elements.mediaVideo.onloadedmetadata = function() {
-                            const aspectRatio = this.videoWidth / this.videoHeight;
-                            const mediaContainer = elements.mediaVideo.closest('.media-container');
-                            if (mediaContainer) {
-                                mediaContainer.classList.remove('horizontal', 'vertical', 'square');
-                                if (aspectRatio > 1.3) {
-                                    mediaContainer.classList.add('horizontal');
-                                } else if (aspectRatio < 0.8) {
-                                    mediaContainer.classList.add('vertical');
-                                } else {
-                                    mediaContainer.classList.add('square');
-                                }
-                            }
-                            
-                            elements.mediaOverlay.classList.remove('hidden');
-                            requestAnimationFrame(() => {
-                                elements.mediaOverlay.classList.add('active');
-                            });
-                            
-                            elements.mediaVideo.oncanplay = function() {
-                                elements.mediaVideo.play().catch(e => {
-                                    console.log('Video play error after canplay (no path retry):', e);
-                                    if (e.name === 'NotSupportedError') {
-                                        console.log('Video not supported on no path retry, showing placeholder');
-                                        elements.sideImage.src = 'images-videos/placeholder.jpg';
-                                        elements.sideImage.style.height = '100%';
-                                        elements.sideImage2.classList.add('hidden');
-                                        const sideImageContent = document.getElementById('sideImageContent');
-                                        if (sideImageContent) {
-                                            sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                                            sideImageContent.classList.add('square');
-                                        }
-                                        elements.sideImageDisplay.classList.remove('hidden');
-                                        requestAnimationFrame(() => {
-                                            elements.sideImageDisplay.classList.add('active');
-                                        });
-                                        elements.mediaOverlay.classList.add('hidden');
-                                        elements.mediaOverlay.classList.remove('active');
-                                    }
-                                });
-                                state.videoPaused = false;
-                                updateBackgroundMusicVolume();
-                            };
-                        };
-                        
-                        elements.mediaVideo.onerror = function() {
-                            console.log('Video load retry failed for', path2, '- showing placeholder');
-                            elements.sideImage.src = 'images-videos/placeholder.jpg';
-                            elements.sideImage.style.height = '100%';
-                            elements.sideImage2.classList.add('hidden');
-                            const sideImageContent = document.getElementById('sideImageContent');
-                            if (sideImageContent) {
-                                sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                                sideImageContent.classList.add('square');
-                            }
-                            elements.sideImageDisplay.classList.remove('hidden');
-                            requestAnimationFrame(() => {
-                                elements.sideImageDisplay.classList.add('active');
-                            });
-                        };
-                    } else {
-                        // No path on retry, show placeholder
-                        console.log('No video path on retry for', currentMedia.id, '- showing placeholder');
-                        elements.sideImage.src = 'images-videos/placeholder.jpg';
-                        elements.sideImage.style.height = '100%';
-                        elements.sideImage2.classList.add('hidden');
-                        const sideImageContent = document.getElementById('sideImageContent');
-                        if (sideImageContent) {
-                            sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
-                            sideImageContent.classList.add('square');
-                        }
-                        elements.sideImageDisplay.classList.remove('hidden');
-                        requestAnimationFrame(() => {
-                            elements.sideImageDisplay.classList.add('active');
-                        });
-                    }
+                // Show placeholder on final failure
+                console.log('Multiple media video failed to load for media', currentMedia.id, 'in tweet', tweet.id);
+                elements.sideImage.src = 'images-videos/placeholder.jpg';
+                elements.sideImage.style.height = '100%';
+                elements.sideImage2.classList.add('hidden');
+                const sideImageContent = document.getElementById('sideImageContent');
+                if (sideImageContent) {
+                    sideImageContent.classList.remove('horizontal', 'vertical', 'square', 'multi-part');
+                    sideImageContent.classList.add('square');
+                }
+                elements.sideImageDisplay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    elements.sideImageDisplay.classList.add('active');
                 });
             }
         });
