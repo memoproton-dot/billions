@@ -1426,7 +1426,7 @@ const timelineData = [
         verified: true,
         text: "Our CEO and cofounder Evin @provenauthority spoke with @YahooFinance about the Coinbase breach.\n\nOutdated systems can't keep your personal data safe.\n\nThe future is privacy-first, and we're working hard to move things forward 💪\n\nCheck out the story: finance.yahoo.com/news/coinbase-...",
         eventSummary: "Yahoo Finance Interview - CEO on data privacy",
-        hasImage: true,
+        hasImage: false,
         hasVideo: false,
         hasQuote: true,
         quoteAuthor: "Billions",
@@ -5534,3 +5534,4 @@ function showFinalMessage() {
         }, 100);
     }
 }
+
